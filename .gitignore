@@ -1,0 +1,29 @@
+# Python
+__pycache__/
+*.pyc
+
+# Runtime data and secrets (the backend writes these under backend/data)
+backend/data/*
+!backend/data/.gitkeep
+*.env
+admin.json
+llm.json
+secret.key
+
+# Firmware build output and generated files
+firmware/build/
+firmware/sdkconfig
+firmware/sdkconfig.old
+firmware/managed_components/
+firmware/dependencies.lock
+firmware/main/offline/fonts/*.ttf
+
+# Host test binaries
+firmware/tests/offline/offline_test
+
+# Editor / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+node_modules/

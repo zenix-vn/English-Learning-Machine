@@ -1,0 +1,38 @@
+# English Learner backend configuration.
+# Chat model, speech-recognition model and API key are managed from the admin page (data/llm.json).
+server:
+  host: 0.0.0.0
+  port: 8000
+  # Public WebSocket URL handed to devices by the OTA endpoint.
+  public_ws_url: wss://e-learning.zenix.vn/ws/
+  # Base URL used to build firmware download links in OTA replies.
+  public_http_url: https://e-learning.zenix.vn
+  # Minutes east of UTC reported to the device clock (Vietnam = UTC+7).
+  timezone_offset_minutes: 420
+  require_token: true
+
+audio:
+  sample_rate: 16000      # same rate in both directions
+  frame_ms: 60            # Opus frame duration used by the device
+
+vad:
+  aggressiveness: 2       # 0 (lenient) .. 3 (strict)
+  silence_ms: 700         # end of utterance after this much silence
+  min_speech_ms: 300      # ignore blips shorter than this
+  max_utterance_s: 20
+
+asr:
+  min_speech_ms: 300   # shorter clips are ignored
+
+tts:
+  voice: en-US-EmmaMultilingualNeural   # reads English and Vietnamese
+  rate: "-5%"
+
+llm:
+  base_url: https://openrouter.ai/api/v1
+  temperature: 0.7
+  max_tokens: 400
+  history_messages: 16
+
+wake_word: "sophia"
+wake_greeting: "Hi, I am Sophia. What would you like to practice today?"

@@ -1,0 +1,176 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Offline study UI preview</title>
+<!--
+  Pixel-accurate preview of the on-device study screens (960 x 376). The numbers here are the same constants as in
+  firmware/main/offline/study_view.cc, so the preview and the LVGL code stay in step.
+  Fonts on the device: Noto Sans Regular at 64 / 44 / 28 / 22 px (no bold weight).
+-->
+<style>
+:root{
+  --bg:#0B1020; --card:#121A30; --line:#223055; --chip:#16203A;
+  --text:#F1F5FF; --muted:#9AA7C7; --dim:#6B7799;
+  --accent:#6C8CFF; --accent-bg:#3452E8;
+  --new:#4DA3FF; --learn:#FFB020; --due:#A78BFA; --extra:#8794B8;
+  --good:#34D399; --again:#FB7185; --easy:#FBBF24;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#05070f;color:var(--text);font:22px/1.36 "Noto Sans","Segoe UI",system-ui,sans-serif;padding:24px;display:flex;flex-direction:column;gap:28px;align-items:flex-start}
+h2{font:600 14px system-ui;color:#8da0d0;letter-spacing:.04em;text-transform:uppercase;margin-bottom:6px}
+.screen{position:relative;width:960px;height:376px;background:var(--bg);overflow:hidden;border-radius:6px;outline:1px solid #1b2547}
+.abs{position:absolute}
+/* header */
+.pill{position:absolute;top:14px;height:34px;border-radius:17px;display:flex;align-items:center;padding:0 16px;font-size:22px;line-height:34px;white-space:nowrap}
+.kind{left:24px;letter-spacing:.06em}
+.kind.new{background:rgba(77,163,255,.16);color:var(--new)} .kind.learn{background:rgba(255,176,32,.16);color:var(--learn)}
+.kind.due{background:rgba(167,139,250,.16);color:var(--due)} .kind.extra{background:rgba(135,148,184,.16);color:var(--extra)}
+.counters{position:absolute;top:14px;right:24px;display:flex;gap:10px}
+.counter{height:34px;border-radius:17px;background:var(--chip);display:flex;align-items:center;gap:8px;padding:0 14px;color:var(--muted);font-size:22px}
+.counter i{width:10px;height:10px;border-radius:50%;display:block}
+.counter b{font-weight:400;color:var(--text)}
+.toast{top:254px;left:50%;transform:translateX(-50%);height:34px;z-index:2}
+.toast.good{background:rgba(52,211,153,.18);color:var(--good)} .toast.again{background:rgba(251,113,133,.18);color:var(--again)} .toast.easy{background:rgba(251,191,36,.18);color:var(--easy)}
+/* progress */
+.track{position:absolute;left:24px;top:58px;width:912px;height:6px;border-radius:3px;background:#1B2440}
+.fill{height:6px;border-radius:3px;background:var(--accent)}
+/* card */
+.card{position:absolute;left:24px;top:78px;width:912px;height:222px;border-radius:28px;background:var(--card);border:1px solid var(--line)}
+.word{position:absolute;white-space:nowrap}
+.w64{font-size:64px;line-height:87px}.w44{font-size:44px;line-height:60px}
+.center{left:0;width:910px;text-align:center}
+.ipa{position:absolute;color:var(--accent);font-size:28px;line-height:38px;white-space:nowrap}
+.wave{position:absolute;display:flex;gap:5px;align-items:center;height:26px}
+.wave s{display:block;width:5px;border-radius:3px;background:var(--accent);opacity:.9}
+.divider{position:absolute;left:340px;top:28px;width:1px;height:164px;background:var(--line)}
+.meaning{position:absolute;left:372px;top:26px;width:512px;height:114px;font-size:28px;line-height:38px;color:var(--text);overflow:hidden;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical}
+.ex{position:absolute;left:372px;width:512px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:22px;line-height:30px}
+.exbar{position:absolute;left:372px;top:152px;width:3px;height:60px;border-radius:2px;background:var(--accent)}
+/* footer legend */
+.legend{position:absolute;left:0;top:316px;width:960px;height:40px;display:flex;justify-content:center;gap:14px}
+.chip{height:40px;border-radius:20px;background:var(--chip);display:flex;align-items:center;gap:12px;padding:0 18px 0 16px;color:var(--muted);font-size:22px}
+.chip .g{display:flex;gap:5px;align-items:center}
+.dot{width:12px;height:12px;border-radius:50%;display:block}
+.bar{width:30px;height:12px;border-radius:6px;display:block}
+.chip.good{color:var(--good)} .chip.again{color:var(--again)} .chip.easy{color:var(--easy)}
+/* menu */
+.row{position:absolute;left:28px;width:854px;height:52px;border-radius:16px;display:flex;align-items:center;padding:0 22px;font-size:28px;color:#C9D3F0}
+.row.sel{background:var(--accent-bg);color:#fff}
+.row small{margin-left:auto;font-size:28px;opacity:.8}
+/* notice / busy */
+.badge{position:absolute;left:418px;top:26px;width:76px;height:76px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:30px}
+.title{position:absolute;left:0;width:910px;text-align:center;font-size:28px;line-height:38px;color:var(--text)}
+.body{position:absolute;left:112px;width:686px;text-align:center;font-size:22px;line-height:30px;color:var(--muted)}
+.pbar{position:absolute;left:216px;top:176px;width:480px;height:8px;border-radius:4px;background:#1B2440}
+.pbar div{height:8px;border-radius:4px;background:var(--accent)}
+</style>
+</head>
+<body>
+
+<section><h2>1 · Thẻ mới, mặt trước (tự phát âm)</h2>
+<div class="screen">
+  <div class="pill kind new">MỚI</div>
+  <div class="counters"><div class="counter"><i style="background:var(--learn)"></i>Học lại <b>2</b></div><div class="counter"><i style="background:var(--due)"></i>Ôn <b>14</b></div><div class="counter"><i style="background:var(--new)"></i>Mới <b>5</b></div></div>
+  <div class="track"><div class="fill" style="width:38%"></div></div>
+  <div class="card">
+    <div class="word w64 center" style="top:34px">achieve</div>
+    <div class="ipa" style="left:0;width:910px;text-align:center;top:128px"><span style="display:inline-flex;align-items:center;gap:14px">/əˈtʃiːv/ <span class="wave" style="position:static"><s style="height:10px"></s><s style="height:20px"></s><s style="height:14px"></s></span></span></div>
+  </div>
+  <div class="legend"><div class="chip"><span class="g"><i class="dot" style="background:var(--text)"></i></span>Xem nghĩa</div><div class="chip"><span class="g"><i class="dot" style="background:var(--text)"></i><i class="dot" style="background:var(--text)"></i></span>Nghe lại</div><div class="chip"><span class="g"><i class="bar" style="background:var(--text)"></i></span>Menu</div></div>
+</div></section>
+
+<section><h2>2 · Mặt sau: nghĩa và ví dụ</h2>
+<div class="screen">
+  <div class="pill kind new">MỚI</div>
+  <div class="counters"><div class="counter"><i style="background:var(--learn)"></i>Học lại <b>2</b></div><div class="counter"><i style="background:var(--due)"></i>Ôn <b>14</b></div><div class="counter"><i style="background:var(--new)"></i>Mới <b>5</b></div></div>
+  <div class="track"><div class="fill" style="width:38%"></div></div>
+  <div class="card">
+    <div class="word w64" style="left:28px;top:36px;width:300px;text-align:center">achieve</div>
+    <div class="ipa" style="left:28px;width:300px;text-align:center;top:126px">/əˈtʃiːv/</div>
+    <div class="divider"></div>
+    <div class="meaning">đạt được, giành được, hoàn thành (mục tiêu, thành tích); thành công trong việc gì</div>
+    <div class="exbar"></div>
+    <div class="ex" style="left:388px;top:152px;width:496px;color:var(--text)">She achieved her goal of running a marathon.</div>
+    <div class="ex" style="left:388px;top:182px;width:496px;color:var(--muted)">Cô ấy đã đạt được mục tiêu chạy marathon.</div>
+  </div>
+  <div class="legend"><div class="chip good"><span class="g"><i class="dot" style="background:var(--good)"></i></span>Nhớ</div><div class="chip again"><span class="g"><i class="dot" style="background:var(--again)"></i><i class="dot" style="background:var(--again)"></i></span>Quên</div><div class="chip easy"><span class="g"><i class="bar" style="background:var(--easy)"></i></span>Dễ</div></div>
+</div></section>
+
+<section><h2>3 · Vừa chấm "Nhớ": thông báo khoảng cách lần gặp lại, sang thẻ kế tiếp</h2>
+<div class="screen">
+  <div class="pill kind due">ÔN TẬP</div>
+  <div class="pill toast good">Nhớ · gặp lại sau 3 ngày</div>
+  <div class="counters"><div class="counter"><i style="background:var(--learn)"></i>Học lại <b>2</b></div><div class="counter"><i style="background:var(--due)"></i>Ôn <b>13</b></div><div class="counter"><i style="background:var(--new)"></i>Mới <b>5</b></div></div>
+  <div class="track"><div class="fill" style="width:41%"></div></div>
+  <div class="card">
+    <div class="word w64 center" style="top:34px">environment</div>
+    <div class="ipa" style="left:0;width:910px;text-align:center;top:128px"><span style="display:inline-flex;align-items:center;gap:14px">/ɪnˈvaɪrənmənt/ <span class="wave" style="position:static"><s style="height:10px"></s><s style="height:20px"></s><s style="height:14px"></s></span></span></div>
+  </div>
+  <div class="legend"><div class="chip"><span class="g"><i class="dot" style="background:var(--text)"></i></span>Xem nghĩa</div><div class="chip"><span class="g"><i class="dot" style="background:var(--text)"></i><i class="dot" style="background:var(--text)"></i></span>Nghe lại</div><div class="chip"><span class="g"><i class="bar" style="background:var(--text)"></i></span>Menu</div></div>
+</div></section>
+
+<section><h2>4 · Từ dài: tự chọn cỡ chữ nhỏ hơn</h2>
+<div class="screen">
+  <div class="pill kind learn">HỌC LẠI</div>
+  <div class="counters"><div class="counter"><i style="background:var(--learn)"></i>Học lại <b>2</b></div><div class="counter"><i style="background:var(--due)"></i>Ôn <b>13</b></div><div class="counter"><i style="background:var(--new)"></i>Mới <b>5</b></div></div>
+  <div class="track"><div class="fill" style="width:41%"></div></div>
+  <div class="card">
+    <div class="word w64 center" style="top:34px;font-size:44px;line-height:60px;top:46px">responsibility</div>
+    <div class="ipa" style="left:0;width:910px;text-align:center;top:116px"><span style="display:inline-flex;align-items:center;gap:14px">/rɪˌspɒnsəˈbɪləti/ <span class="wave" style="position:static"><s style="height:10px"></s><s style="height:20px"></s><s style="height:14px"></s></span></span></div>
+  </div>
+  <div class="legend"><div class="chip"><span class="g"><i class="dot" style="background:var(--text)"></i></span>Xem nghĩa</div><div class="chip"><span class="g"><i class="dot" style="background:var(--text)"></i><i class="dot" style="background:var(--text)"></i></span>Nghe lại</div><div class="chip"><span class="g"><i class="bar" style="background:var(--text)"></i></span>Menu</div></div>
+</div></section>
+
+<section><h2>5 · Menu</h2>
+<div class="screen">
+  <div class="pill kind extra" style="letter-spacing:.06em">MENU</div>
+  <div class="counters"><div class="counter"><i style="background:var(--learn)"></i>Học lại <b>2</b></div><div class="counter"><i style="background:var(--due)"></i>Ôn <b>13</b></div><div class="counter"><i style="background:var(--new)"></i>Mới <b>5</b></div></div>
+  <div class="track"><div class="fill" style="width:41%"></div></div>
+  <div class="card">
+    <div class="row" style="top:17px">Tiếp tục học<small></small></div>
+    <div class="row sel" style="top:85px">Đồng bộ ngay (Wi-Fi)<small>&gt;</small></div>
+    <div class="row" style="top:153px">Thoát học offline</div>
+  </div>
+  <div class="legend"><div class="chip"><span class="g"><i class="dot" style="background:var(--text)"></i></span>Mục kế</div><div class="chip"><span class="g"><i class="bar" style="background:var(--text)"></i></span>Chọn</div><div class="chip"><span class="g"><i class="dot" style="background:var(--text)"></i><i class="dot" style="background:var(--text)"></i></span>Quay lại</div></div>
+</div></section>
+
+<section><h2>6 · Đang đồng bộ</h2>
+<div class="screen">
+  <div class="pill kind extra">ĐỒNG BỘ</div>
+  <div class="track"><div class="fill" style="width:41%"></div></div>
+  <div class="card">
+    <div class="title" style="top:50px">Đang tải gói học</div>
+    <div class="body" style="top:96px">Đang tải 3/4 (audio.bin) 62%</div>
+    <div class="pbar" style="top:150px"><div style="width:62%"></div></div>
+  </div>
+</div></section>
+
+<section><h2>7 · Hoàn thành mục tiêu hôm nay</h2>
+<div class="screen">
+  <div class="pill kind extra">XONG</div>
+  <div class="counters"><div class="counter"><i style="background:var(--learn)"></i>Học lại <b>0</b></div><div class="counter"><i style="background:var(--due)"></i>Ôn <b>0</b></div><div class="counter"><i style="background:var(--new)"></i>Mới <b>0</b></div></div>
+  <div class="track"><div class="fill" style="width:100%;background:var(--good)"></div></div>
+  <div class="card">
+    <div class="badge" style="background:rgba(52,211,153,.16);color:var(--good);top:22px">OK</div>
+    <div class="title" style="top:114px">Hôm nay bạn đã học xong!</div>
+    <div class="body" style="top:158px">Đã ôn 23 thẻ · 5 từ mới</div>
+  </div>
+  <div class="legend"><div class="chip"><span class="g"><i class="dot" style="background:var(--text)"></i></span>Ôn thêm</div><div class="chip"><span class="g"><i class="bar" style="background:var(--text)"></i></span>Menu</div></div>
+</div></section>
+
+<section><h2>8 · Chưa có gói học</h2>
+<div class="screen">
+  <div class="pill kind learn">CHƯA CÓ GÓI</div>
+  <div class="track"><div class="fill" style="width:0%"></div></div>
+  <div class="card">
+    <div class="badge" style="background:rgba(255,176,32,.16);color:var(--learn);top:22px">!</div>
+    <div class="title" style="top:114px">Chưa có gói học</div>
+    <div class="body" style="top:158px">Kết nối Wi-Fi rồi chọn "Đồng bộ ngay" trong menu để tải về.</div>
+  </div>
+  <div class="legend"><div class="chip"><span class="g"><i class="bar" style="background:var(--text)"></i></span>Menu</div></div>
+</div></section>
+
+</body>
+</html>

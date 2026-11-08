@@ -1,0 +1,11 @@
+services:
+  backend:
+    build: .
+    container_name: english-learner
+    restart: always
+    environment:
+      - TZ=Asia/Ho_Chi_Minh
+    ports:
+      - "127.0.0.1:18000:8000"
+    volumes:
+      - ./data:/srv/data

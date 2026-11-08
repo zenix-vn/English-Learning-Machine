@@ -1,0 +1,464 @@
+menu "English Learner"
+
+config OTA_URL
+    string "Default OTA URL"
+    default "https://e-learning.zenix.vn/ota/"
+    help
+        The application will access this URL to check for new firmwares and server address.
+
+config BOARD_TYPE_ENGLISH_LEARNER
+    bool "English Learning Machine (ESP32-TPCB313, 3.13 inch)"
+    default y
+    depends on IDF_TARGET_ESP32S3
+
+choice
+    prompt "Flash Assets"
+    default FLASH_DEFAULT_ASSETS if !USE_EMOTE_MESSAGE_STYLE
+    default FLASH_EXPRESSION_ASSETS if USE_EMOTE_MESSAGE_STYLE
+    help
+        Select the assets to flash.
+
+    config FLASH_NONE_ASSETS
+        bool "Do not flash assets"
+    config FLASH_DEFAULT_ASSETS
+        bool "Flash Default Assets"
+        depends on !USE_EMOTE_MESSAGE_STYLE
+    config FLASH_CUSTOM_ASSETS
+        bool "Flash Custom Assets"
+    config FLASH_EXPRESSION_ASSETS
+        bool "Flash Emote Assets"
+        depends on USE_EMOTE_MESSAGE_STYLE
+endchoice
+
+config CUSTOM_ASSETS_FILE
+    depends on FLASH_CUSTOM_ASSETS
+    string "Custom Assets File"
+    default "assets.bin"
+    help
+        The custom assets file to flash.
+        It can be a local file relative to the project directory or a remote url.
+
+config EL_OFFLINE_STUDY
+    bool "Offline study mode (flashcards kept in flash)"
+    default y
+    depends on IDF_TARGET_ESP32S3
+    help
+        Adds a study mode that works without network: flashcards with spoken words and spaced repetition.
+        Needs the "store" FAT partition from partitions/v2/16m.csv.
+
+config EL_OFFLINE_NEW_PER_DAY
+    int "New cards per day in offline study"
+    default 10
+    range 1 100
+    depends on EL_OFFLINE_STUDY
+
+choice
+    prompt "Default Language"
+    default LANGUAGE_VI_VN
+    help
+        Select device display language
+
+    config LANGUAGE_VI_VN
+        bool "Vietnamese"
+    config LANGUAGE_EN_US
+        bool "English"
+endchoice
+
+
+config RESPEAKER_I2S_EXTERNAL_CLOCK_48K
+    bool "ReSpeaker: XMOS supplies 48 kHz I2S clocks"
+    depends on BOARD_TYPE_SEEED_XIAO_ESP32S3_RESPEAKER_XVF3800
+    default n
+    help
+        Configure the ESP32-S3 as an I2S slave at 48 kHz when the XMOS supplies
+        BCLK and WS. The firmware resamples the captured audio to 16 kHz.
+        Leave disabled for XMOS I2S slave firmware requiring a 16 kHz host master.
+        Select according to the XMOS firmware, not just the microphone shape.
+
+config RESPEAKER_AUDIO_DIAGNOSTICS
+    bool "ReSpeaker: log I2S capture statistics and raw samples"
+    depends on BOARD_TYPE_SEEED_XIAO_ESP32S3_RESPEAKER_XVF3800
+    default n
+    help
+        Report I2S sample counts, amplitude and raw sample pairs every five
+        seconds while capturing. Leave disabled for normal operation.
+
+config RESPEAKER_I2S_CLOCK_PROBE_ONLY
+    bool "ReSpeaker: passive I2S clock diagnostic only (no chat)"
+    depends on BOARD_TYPE_SEEED_XIAO_ESP32S3_RESPEAKER_XVF3800
+    default n
+    help
+        Leave BCLK and WS as inputs and report observed external clock activity.
+        This diagnostic does not initialize I2S or start the application.
+        Disable it and rebuild to restore normal operation.
+
+choice EL_NETWORK_TYPE
+    prompt "Network Type"
+    depends on BOARD_TYPE_WAVESHARE_ESP32_P4_NANO
+    default EL_NETWORK_WIFI
+    help
+        Select the network connection used by this board.
+
+    config EL_NETWORK_WIFI
+        bool "WiFi"
+
+    config EL_NETWORK_ETHERNET
+        bool "Ethernet"
+        select ETH_ENABLED
+        select ETH_USE_ESP32_EMAC
+        help
+            Use the onboard Ethernet port for network access.
+endchoice
+
+menu "Ethernet Configuration"
+    depends on EL_NETWORK_ETHERNET
+
+    choice EL_ETH_PHY_MODEL
+        prompt "Ethernet PHY Device"
+        default EL_ETH_PHY_IP101
+
+        config EL_ETH_PHY_IP101
+            bool "IP101/IP101GR"
+            help
+                IP101/IP101GR 10/100M Ethernet PHY, used by Waveshare ESP32-P4-NANO.
+    endchoice
+
+    config EL_ETH_MDC_GPIO
+        int "Ethernet SMI MDC GPIO"
+        range 0 54
+        default 31 if BOARD_TYPE_WAVESHARE_ESP32_P4_NANO
+        default 31
+        help
+            GPIO used by the Ethernet SMI MDC signal.
+
+    config EL_ETH_MDIO_GPIO
+        int "Ethernet SMI MDIO GPIO"
+        range 0 54
+        default 52 if BOARD_TYPE_WAVESHARE_ESP32_P4_NANO
+        default 52
+        help
+            GPIO used by the Ethernet SMI MDIO signal.
+
+    config EL_ETH_PHY_ADDR
+        int "Ethernet PHY Address"
+        range -1 31
+        default 1
+        help
+            Set the PHY address according to the board schematic.
+            Use -1 to let the driver search for the PHY address.
+
+    config EL_ETH_PHY_RST_GPIO
+        int "Ethernet PHY Reset GPIO"
+        range -1 54
+        default 51 if BOARD_TYPE_WAVESHARE_ESP32_P4_NANO
+        default -1
+        help
+            GPIO used to reset the Ethernet PHY. Set to -1 if not connected.
+
+endmenu
+
+
+
+
+
+
+config BREAD_COMPACT_WIFI_CAM_DISABLE_LCD
+    bool "Disable LCD (frees GPIO19/20 for built-in USB-JTAG debugging)"
+    depends on BOARD_TYPE_BREAD_COMPACT_WIFI_CAM
+    default n
+    help
+        The LCD SPI uses GPIO19/GPIO20, which are the ESP32-S3 USB D-/D+ pins.
+        Enable this to run without the LCD so USB-Serial/JTAG stays available.
+
+
+
+
+
+
+
+
+
+choice DISPLAY_STYLE
+    prompt "Select display style"
+    default USE_DEFAULT_MESSAGE_STYLE
+    help
+        Select display style for the device
+
+    config USE_DEFAULT_MESSAGE_STYLE
+        bool "Enable default message style"
+
+    config USE_WECHAT_MESSAGE_STYLE
+        bool "Enable WeChat Message Style"
+
+    config USE_EMOTE_MESSAGE_STYLE
+        bool "Emote animation style"
+        depends on BOARD_TYPE_ESP32_S3_BOX || BOARD_TYPE_ESP32_S3_BOX_3 \
+            || BOARD_TYPE_ESP_VOCAT || BOARD_TYPE_CYBERAI_VOCAT_V2_0 || BOARD_TYPE_CYBERAI_VOCAT_V2_1 \
+            || BOARD_TYPE_LICHUANG_DEV_S3 || BOARD_TYPE_RYMCU_BIGSMART \
+            || BOARD_TYPE_ESP_SENSAIRSHUTTLE || BOARD_TYPE_STACKCHAN
+endchoice
+
+config JC4827W543_EXTERNAL_AMP
+    bool "JC4827W543: external I2S amplifier instead of the on-board NS4168"
+    depends on BOARD_TYPE_GUITION_JC4827W543
+    default n
+    help
+        The board carries an NS4168 wired to the P7 speaker connector, which is
+        what a stock unit uses. Enable this only if you drive an external I2S
+        amplifier from the expansion headers instead.
+
+config USE_MULTILINE_CHAT_MESSAGE
+    bool "Use multiline chat message display (default mode only)"
+    depends on USE_DEFAULT_MESSAGE_STYLE
+    default n
+    help
+        When enabled, the chat message area in the default display mode shows
+        multiple wrapped lines that grow upward from the bottom of the screen,
+        with auto-adaptive height.
+        When disabled (default), a single-line horizontally scrolling label
+        is shown at the bottom of the screen.
+
+choice WAKE_WORD_TYPE
+    prompt "Wake Word Implementation Type"
+    default WAKE_WORD_DISABLED
+    help
+        Choose the type of wake word implementation to use.
+        scripts/build.py selects a compatible implementation and model automatically.
+        When configuring manually, select the corresponding ESP-SR models as well.
+
+    config WAKE_WORD_DISABLED
+        bool "Disabled"
+        help
+            Disable wake word detection
+
+    config USE_ESP_WAKE_WORD
+        bool "Wakenet model without AFE"
+        depends on IDF_TARGET_ESP32C3 || IDF_TARGET_ESP32C5 || IDF_TARGET_ESP32C6 || (IDF_TARGET_ESP32 && SPIRAM)
+        help
+            Support ESP32 C3, ESP32 C5 and ESP32 C6, and (ESP32 with PSRAM)
+
+    config USE_AFE_WAKE_WORD
+        bool "Wakenet model with AFE"
+        depends on (IDF_TARGET_ESP32S3 || IDF_TARGET_ESP32P4 || IDF_TARGET_ESP32S31) && SPIRAM
+        help
+            Support AEC if available, requires ESP32-S3, ESP32-P4, or ESP32-S31 and PSRAM
+
+    config USE_CUSTOM_WAKE_WORD
+        bool "Multinet model (Custom Wake Word)"
+        depends on (IDF_TARGET_ESP32S3 || IDF_TARGET_ESP32P4 || IDF_TARGET_ESP32S31) && SPIRAM
+        help
+            Requires ESP32-S3, ESP32-P4, or ESP32-S31 and PSRAM
+
+endchoice
+
+config CUSTOM_WAKE_WORD
+    string "Custom Wake Word"
+    default "sophia"
+    depends on USE_CUSTOM_WAKE_WORD
+    help
+        Custom Wake Word. English MultiNet models expect the phoneme form produced by
+        the esp-sr multinet_g2p tool, not plain text.
+
+config CUSTOM_WAKE_WORD_DISPLAY
+    string "Custom Wake Word Display"
+    default "Sophia"
+    depends on USE_CUSTOM_WAKE_WORD
+    help
+        Greeting sent to the server after wake word detection
+
+config CUSTOM_WAKE_WORD_THRESHOLD
+    int "Custom Wake Word Threshold (%)"
+    default 20
+    range 1 99
+    depends on USE_CUSTOM_WAKE_WORD
+    help
+        Custom Wake Word Threshold, range 1-99, the smaller the more sensitive, default 20
+
+config SEND_WAKE_WORD_DATA
+    bool "Send Wake Word Data"
+    default y
+    depends on USE_AFE_WAKE_WORD || USE_CUSTOM_WAKE_WORD
+    help
+        Send wake word data to the server as the first message of the conversation and wait for response
+
+config WAKE_WORD_DETECTION_IN_LISTENING
+    bool "Enable Wake Word Detection in Listening Mode"
+    default n
+    depends on USE_AFE_WAKE_WORD || USE_CUSTOM_WAKE_WORD
+    help
+        Enable wake word detection while in listening mode.
+        When enabled, the device can detect wake word during listening,
+        which allows interrupting the current conversation.
+        When disabled (default), wake word detection is turned off during listening.
+
+config USE_AUDIO_PROCESSOR
+    bool "Enable AFE Audio Processing"
+    default y
+    depends on (IDF_TARGET_ESP32S3 || IDF_TARGET_ESP32P4 || IDF_TARGET_ESP32S31) && SPIRAM
+    help
+        Enable the shared AFE uplink path with AEC and VAD. Noise suppression
+        is not enabled because this project does not provide an NSNet model.
+        Requires ESP32-S3, ESP32-P4, or ESP32-S31 with PSRAM.
+
+config USE_DEVICE_AEC
+    bool "Enable Device-Side AEC"
+    default n
+        depends on USE_AUDIO_PROCESSOR && (BOARD_TYPE_ESP32_S3_BOX_3 || BOARD_TYPE_ESP32_S3_BOX || BOARD_TYPE_ESP32_S3_BOX_LITE \
+        || BOARD_TYPE_LICHUANG_DEV_S3 || BOARD_TYPE_RYMCU_BIGSMART || BOARD_TYPE_ESP32_S3_KORVO_2_V3 || BOARD_TYPE_WAVESHARE_ESP32_S3_TOUCH_AMOLED_1_75|| BOARD_TYPE_WAVESHARE_ESP32_S3_TOUCH_AMOLED_1_75C || BOARD_TYPE_WAVESHARE_ESP32_S3_TOUCH_LCD_1_83\
+        || BOARD_TYPE_WAVESHARE_ESP32_S3_TOUCH_AMOLED_2_06 || BOARD_TYPE_WAVESHARE_ESP32_S3_TOUCH_AMOLED_2_16 || BOARD_TYPE_WAVESHARE_ESP32_S3_TOUCH_LCD_4B || BOARD_TYPE_WAVESHARE_ESP32_P4_WIFI6_TOUCH_LCD_4B || BOARD_TYPE_WAVESHARE_ESP32_P4_WIFI6_TOUCH_LCD_4_3 || BOARD_TYPE_WAVESHARE_ESP32_P4_WIFI6_TOUCH_LCD_5 \
+        || BOARD_TYPE_WAVESHARE_ESP32_P4_WIFI6_TOUCH_LCD_7B || BOARD_TYPE_CHD_ESP32S3_BOX \
+        || BOARD_TYPE_WAVESHARE_ESP32_P4_WIFI6_TOUCH_LCD_3_4C || BOARD_TYPE_WAVESHARE_ESP32_P4_WIFI6_TOUCH_LCD_4C || BOARD_TYPE_ESP32_S3_LCD_EV_BOARD_2 || BOARD_TYPE_YUNLIAO_S3 \
+        || BOARD_TYPE_WAVESHARE_ESP32_P4_WIFI6_TOUCH_LCD_7 || BOARD_TYPE_WAVESHARE_ESP32_P4_WIFI6_TOUCH_LCD_8 || BOARD_TYPE_WAVESHARE_ESP32_P4_WIFI6_TOUCH_LCD_10_1 \
+        || BOARD_TYPE_ESP_VOCAT || BOARD_TYPE_CYBERAI_VOCAT_V2_0 || BOARD_TYPE_CYBERAI_VOCAT_V2_1 \
+        || BOARD_TYPE_WAVESHARE_ESP32_S3_TOUCH_LCD_3_49 || BOARD_TYPE_WAVESHARE_ESP32_S3_TOUCH_LCD_3_49_V2 || BOARD_TYPE_WAVESHARE_ESP32_S3_RLCD_4_2 || BOARD_TYPE_WAVESHARE_ESP32_S3_TOUCH_LCD_1_85B || BOARD_TYPE_ZHENGCHEN_CAM || BOARD_TYPE_ZHENGCHEN_CAM_ML307 \
+        || BOARD_TYPE_WAVESHARE_ESP32_S3_TOUCH_LCD_4_3C || BOARD_TYPE_WAVESHARE_ESP32_S3_TOUCH_LCD_1_54 || BOARD_TYPE_WAVESHARE_ESP32_S3_LCD_0_85 || BOARD_TYPE_AI_VOX3 || BOARD_TYPE_WAVESHARE_ESP32_S3_TOUCH_AMOLED_1_43C || BOARD_TYPE_ATK_DNESP32S3_BOX3)
+    help
+        To work properly, device-side AEC requires a clean output reference path from the speaker signal and physical acoustic isolation between the microphone and speaker.
+
+config USE_SERVER_AEC
+    bool "Enable Server-Side AEC (Unstable)"
+    default n
+    depends on USE_AUDIO_PROCESSOR
+    help
+        To work perperly, server-side AEC requires server support
+
+config USE_AUDIO_DEBUGGER
+    bool "Enable Audio Debugger"
+    default n
+    help
+        Enable audio debugger, send audio data through UDP to the host machine
+
+menu "WiFi Configuration Method"
+    help
+        WiFi Configuration Method Selection
+    config USE_HOTSPOT_WIFI_PROVISIONING
+        bool "Hotspot"
+        default y
+        help
+            Use WiFi Hotspot to transmit WiFi configuration data
+    config USE_ESP_BLUFI_WIFI_PROVISIONING
+        bool "ESP-BluFi"
+        select BT_ENABLED
+        select BT_BLE_42_FEATURES_SUPPORTED
+        select BT_BLE_BLUFI_ENABLE
+        help
+            Use the PSA Crypto based BluFi security protocol adopted by ESP-IDF 6.
+            The provisioning client must support ffdhe3072, SHA-256, and AES-CTR.
+endmenu
+
+config AUDIO_DEBUG_UDP_SERVER
+    string "Audio Debug UDP Server Address"
+    default "192.168.2.100:8000"
+    depends on USE_AUDIO_DEBUGGER
+    help
+        UDP server address, format: IP:PORT, used to receive audio debugging data
+
+config RECEIVE_CUSTOM_MESSAGE
+    bool "Enable Custom Message Reception"
+    default n
+    help
+        Enable custom message reception, allow the device to receive custom messages from the server (preferably through the MQTT protocol)
+
+menu "Camera Configuration"
+    depends on !IDF_TARGET_ESP32
+
+    comment "Warning: Please read the help text before modifying these settings."
+
+    config EL_CAMERA_MIRROR_CONFIGURED
+        bool "Override camera mirror settings"
+        default n
+        help
+            When enabled, the common camera implementations apply the
+            horizontal and vertical mirror settings below after the sensor has
+            been initialized. Parameterized builds enable this automatically
+            when either mirror setting is configured.
+
+    config EL_CAMERA_HMIRROR
+        bool "Mirror Camera Horizontally"
+        default n
+        depends on EL_CAMERA_MIRROR_CONFIGURED
+        help
+            Flip the captured camera image across the vertical axis.
+
+    config EL_CAMERA_VFLIP
+        bool "Mirror Camera Vertically"
+        default n
+        depends on EL_CAMERA_MIRROR_CONFIGURED
+        help
+            Flip the captured camera image across the horizontal axis.
+
+    config EL_CAMERA_ALLOW_JPEG_INPUT
+        bool "Allow JPEG Input"
+        default n
+        help
+            Allow JPEG Input format for the camera.
+
+            This option may need to be enabled when using a USB camera.
+
+            Not currently supported when used simultaneously with EL_ENABLE_ROTATE_CAMERA_IMAGE.
+
+    config EL_ENABLE_HARDWARE_JPEG_ENCODER
+        bool "Enable Hardware JPEG Encoder"
+        default y
+        depends on SOC_JPEG_ENCODE_SUPPORTED
+        help
+            Use hardware JPEG encoder on ESP32-P4 to encode image to JPEG.
+            See https://docs.espressif.com/projects/esp-idf/en/stable/esp32p4/api-reference/peripherals/jpeg.html for more details.
+
+    config EL_ENABLE_HARDWARE_JPEG_DECODER
+        bool "Enable Hardware JPEG Decoder"
+        default n
+        depends on SOC_JPEG_DECODE_SUPPORTED && EL_CAMERA_ALLOW_JPEG_INPUT
+        help
+            Use hardware JPEG decoder on ESP32-P4 to decode JPEG to image.
+            See https://docs.espressif.com/projects/esp-idf/en/stable/esp32p4/api-reference/peripherals/jpeg.html for more details.
+
+    config EL_ENABLE_CAMERA_DEBUG_MODE
+        bool "Enable Camera Debug Mode"
+        default n
+        help
+            Enable camera debug mode, print camera debug information to the console.
+            Only works on boards that support camera.
+
+    config EL_ENABLE_CAMERA_ENDIANNESS_SWAP
+        bool "Enable software camera buffer endianness swapping"
+        default n
+        depends on !CAMERA_SENSOR_SWAP_PIXEL_BYTE_ORDER
+        help
+            This option treats the camera buffer as a uint16_t[] array and performs byte-swapping (endianness conversion) on each element.
+
+            Should only be modified by development board integration engineers.
+
+            **Incorrect usage may result in incorrect image colors!**
+
+            ATTENTION: If the option CAMERA_SENSOR_SWAP_PIXEL_BYTE_ORDER is available for your sensor, please use that instead.
+
+    menuconfig EL_ENABLE_ROTATE_CAMERA_IMAGE
+        bool "Enable Camera Image Rotation"
+        default n
+        depends on !EL_CAMERA_ALLOW_JPEG_INPUT
+        help
+            Enable camera image rotation, rotate the camera image to the correct orientation.
+            - On ESP32-P4, rotation is handled by PPA hardware.
+            - On other chips, rotation is done in software with performance cost.
+            - For 180° rotation, use HFlip + VFlip instead of this option.
+
+            Not currently supported when used simultaneously with EL_CAMERA_ALLOW_JPEG_INPUT.
+
+    if EL_ENABLE_ROTATE_CAMERA_IMAGE
+        choice EL_CAMERA_IMAGE_ROTATION_ANGLE
+            prompt "Camera Image Rotation Angle (clockwise)"
+            default EL_CAMERA_IMAGE_ROTATION_ANGLE_90
+            help
+                Camera image rotation angle.
+            config EL_CAMERA_IMAGE_ROTATION_ANGLE_90
+                bool "90°"
+            config EL_CAMERA_IMAGE_ROTATION_ANGLE_270
+                bool "270°"
+            comment "For 180° rotation, use HFlip + VFlip instead of this option"
+        endchoice
+    endif
+endmenu
+
+
+endmenu

@@ -1,0 +1,407 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>English Learner Admin</title>
+<style>
+:root{--bg:#f4f6f9;--card:#fff;--fg:#1a1d23;--mut:#667085;--line:#e3e7ee;--acc:#2563eb;--accfg:#fff;--ok:#15803d;--warn:#b45309;--bad:#b91c1c;--sel:#eaf1ff;--bar:#93b4f5;--bar2:#2563eb}
+@media (prefers-color-scheme:dark){:root{--bg:#0e1015;--card:#171a21;--fg:#e8eaee;--mut:#9aa3b2;--line:#272c36;--acc:#5b8def;--accfg:#0b0e14;--ok:#4ade80;--warn:#fbbf24;--bad:#f87171;--sel:#1b2a4a;--bar:#2e4a85;--bar2:#5b8def}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.5 system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+header{background:var(--card);border-bottom:1px solid var(--line);position:sticky;top:0;z-index:5}
+.wrap{max-width:1100px;margin:0 auto;padding:0 16px}
+.top{display:flex;align-items:center;gap:16px;padding:10px 16px;flex-wrap:wrap}
+.brand{font-weight:700;font-size:17px}
+nav{display:flex;gap:4px;flex-wrap:wrap}
+nav a{padding:7px 12px;border-radius:8px;color:var(--mut);text-decoration:none;font-weight:600;cursor:pointer}
+nav a.on{background:var(--sel);color:var(--acc)}
+nav .dot[hidden]{display:none}nav .dot{display:inline-block;min-width:18px;padding:0 5px;margin-left:4px;border-radius:99px;background:var(--warn);color:#fff;font-size:12px;text-align:center}
+main{padding:20px 0 80px}
+h2{font-size:18px;margin:0 0 12px}
+h3{font-size:15px;margin:0 0 8px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px;margin-bottom:16px}
+.grid{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));margin-bottom:16px}
+.stat{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px}
+.stat .k{color:var(--mut);font-size:13px}.stat .v{font-size:24px;font-weight:700;line-height:1.3}.stat .s{color:var(--mut);font-size:13px}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}.grow{flex:1 1 200px}
+label.f{display:block;font-weight:600;margin:12px 0 4px}
+input[type=text],input[type=password],input[type=search],input[type=number],select,textarea{width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--fg);font:inherit}
+textarea{min-height:200px;font:13px/1.5 ui-monospace,Consolas,monospace;resize:vertical}
+button{padding:8px 14px;border-radius:8px;border:1px solid var(--line);background:var(--card);color:var(--fg);font:inherit;cursor:pointer}
+button:hover{border-color:var(--acc)}
+button.p{background:var(--acc);color:var(--accfg);border-color:var(--acc);font-weight:600}
+button.d{color:var(--bad)}button.s{padding:4px 10px;font-size:13px}
+button:disabled{opacity:.5;cursor:default}
+.hint{color:var(--mut);font-size:13px;margin-top:4px}
+.msg{min-height:1.4em;margin-top:8px}.ok{color:var(--ok)}.bad{color:var(--bad)}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th,td{padding:8px 10px;text-align:left;border-bottom:1px solid var(--line);vertical-align:top}
+th{color:var(--mut);font-weight:600;white-space:nowrap}
+td.n,th.n{text-align:right;font-variant-numeric:tabular-nums}
+.scroll{overflow:auto;max-height:460px;border:1px solid var(--line);border-radius:8px}
+.scroll th{position:sticky;top:0;background:var(--card);cursor:pointer}
+tr.m{cursor:pointer}tr.m:hover,tr.sel{background:var(--sel)}
+.tag{font-size:12px;padding:1px 8px;border-radius:99px;border:1px solid var(--line);color:var(--mut);white-space:nowrap}
+.tag.ok{color:var(--ok);border-color:var(--ok)}.tag.warn{color:var(--warn);border-color:var(--warn)}.tag.bad{color:var(--bad);border-color:var(--bad)}
+.dot2{display:inline-block;width:9px;height:9px;border-radius:50%;background:var(--line);margin-right:6px}.dot2.on{background:var(--ok)}
+.dev{border:1px solid var(--line);border-radius:12px;padding:14px;margin-bottom:12px;background:var(--card)}
+.dev.pending{border-color:var(--warn)}
+.dev .meta{color:var(--mut);font-size:13px;display:flex;gap:14px;flex-wrap:wrap;margin:6px 0 10px}
+.dev .act{display:flex;gap:6px;flex-wrap:wrap}
+.turn{border-bottom:1px solid var(--line);padding:10px 0}
+.turn .u{font-weight:600}.turn .r{color:var(--fg);margin-top:2px}.turn .m{color:var(--mut);font-size:12.5px;margin-top:4px;display:flex;gap:10px;flex-wrap:wrap}
+.bar{height:8px;background:var(--line);border-radius:99px;overflow:hidden;margin-top:6px}.bar i{display:block;height:100%;background:var(--acc)}.bar i.hot{background:var(--bad)}
+pre.log{background:#0b0e14;color:#d6deeb;padding:12px;border-radius:8px;overflow:auto;max-height:560px;font:12px/1.5 ui-monospace,Consolas,monospace;white-space:pre-wrap;word-break:break-all}
+svg text{fill:var(--mut);font-size:10px}
+.sw{display:flex;align-items:center;gap:8px;margin:10px 0}
+@media (max-width:600px){th,td{padding:6px}.stat .v{font-size:20px}}
+</style>
+</head>
+<body>
+<header><div class="wrap top">
+  <span class="brand">English Learner</span>
+  <nav id="nav">
+    <a data-t="overview">Tổng quan</a><a data-t="devices">Thiết bị<span class="dot" id="pendDot" hidden></span></a><a data-t="plans">Gói cước</a>
+    <a data-t="turns">Hội thoại</a><a data-t="vocab">Từ vựng</a><a data-t="offline">Học offline</a><a data-t="firmware">Firmware</a>
+    <a data-t="settings">Cài đặt</a><a data-t="logs">Nhật ký</a>
+  </nav>
+</div></header>
+<main class="wrap" id="view"></main>
+
+<script>
+const $=s=>document.querySelector(s);
+const B=location.pathname.replace(/\/$/,'');
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+async function api(p,body,method){
+  const o=body!==undefined?{method:method||'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}:{};
+  const r=await fetch(B+p,o);return r.json()}
+const money=v=>v===0?'$0':v<0.01?'$'+v.toFixed(4):'$'+v.toFixed(v<10?3:2);
+const fmt=ts=>ts?new Date(ts*1000).toLocaleString('vi-VN',{hour12:false}):'—';
+function ago(ts){if(!ts)return'—';const d=Date.now()/1000-ts;if(d<60)return'vừa xong';if(d<3600)return Math.floor(d/60)+' phút trước';if(d<86400)return Math.floor(d/3600)+' giờ trước';return Math.floor(d/86400)+' ngày trước'}
+const bytes=n=>n>1048576?(n/1048576).toFixed(2)+' MB':Math.round(n/1024)+' KB';
+const money2=v=>'$'+(v||0).toFixed(2);
+function setMsg(el,t,c){el.className='msg '+(c||'');el.textContent=t}
+
+/* ---------- routing ---------- */
+const tabs={overview,devices,plans,turns,vocab,offline,firmware,settings,logs};
+let timer=null;
+function go(){const t=(location.hash||'#overview').slice(1).split('?')[0];const name=tabs[t]?t:'overview';
+  document.querySelectorAll('nav a').forEach(a=>a.classList.toggle('on',a.dataset.t===name));
+  clearInterval(timer);timer=null;$('#view').innerHTML='<p class="hint">Đang tải…</p>';tabs[name]()}
+document.querySelectorAll('nav a').forEach(a=>a.onclick=()=>{location.hash=a.dataset.t});
+addEventListener('hashchange',go);
+function hashParam(k){const q=(location.hash.split('?')[1]||'');return new URLSearchParams(q).get(k)||''}
+async function pendingBadge(){try{const r=await api('/api/overview');const n=r.devices.pending;const d=$('#pendDot');d.hidden=!n;d.textContent=n}catch(e){}}
+
+/* ---------- overview ---------- */
+async function overview(){
+  const o=await api('/api/overview');const t=o.today,w=o.week,m=o.month,dv=o.devices;
+  const pct=o.limit?Math.min(100,t.cost/o.limit*100):0;
+  const max=Math.max(1,...o.days.map(d=>d.n));
+  const bars=o.days.map((d,i)=>{const h=Math.round(d.n/max*100),x=10+i*39;
+    return `<g><title>${esc(d.day)}: ${d.n} lượt, ${money(d.cost)}</title><rect x="${x}" y="${115-h}" width="28" height="${Math.max(h,d.n?2:0)}" rx="3" fill="${i===13?'var(--bar2)':'var(--bar)'}"/><text x="${x+14}" y="130" text-anchor="middle">${esc(d.day.slice(0,5))}</text><text x="${x+14}" y="${110-h}" text-anchor="middle">${d.n||''}</text></g>`}).join('');
+  $('#view').innerHTML=`
+  <div class="grid">
+    <div class="stat"><div class="k">Backend</div><div class="v ${o.backend==='running'?'ok':'bad'}">${o.backend==='running'?'Đang chạy':'Lỗi'}</div><div class="s">${esc(o.backend==='running'?'':o.backend)}</div></div>
+    <div class="stat"><div class="k">Thiết bị</div><div class="v">${dv.online} / ${dv.total}</div><div class="s">online / tổng${dv.pending?` · <b class="bad">${dv.pending} chờ kích hoạt</b>`:''}${dv.blocked?` · ${dv.blocked} bị khóa`:''}</div></div>
+    <div class="stat"><div class="k">Gói cước</div><div class="v ${dv.expired?'bad':''}">${dv.expired?dv.expired+' hết hạn':dv.expiring?dv.expiring+' sắp hết':'Ổn'}</div><div class="s">${dv.expiring&&dv.expired?dv.expiring+' sắp hết hạn trong 7 ngày':dv.expiring?'sắp hết hạn trong 7 ngày':'không có thiết bị quá hạn'}</div></div>
+    <div class="stat"><div class="k">Hôm nay</div><div class="v">${t.n} lượt</div><div class="s">${money(t.cost)}${t.err?` · <span class="bad">${t.err} lỗi</span>`:''}</div></div>
+    <div class="stat"><div class="k">Độ trễ TB hôm nay</div><div class="v">${t.lat?(t.lat/1000).toFixed(1)+' s':'—'}</div><div class="s">từ lúc nói xong đến tiếng đầu</div></div>
+    <div class="stat"><div class="k">7 ngày</div><div class="v">${money(w.cost)}</div><div class="s">${w.n} lượt</div></div>
+    <div class="stat"><div class="k">30 ngày</div><div class="v">${money(m.cost)}</div><div class="s">${m.n} lượt${o.credit&&o.credit.total!=null?` · còn ${money2(o.credit.total-o.credit.used)} credit`:''}</div></div>
+  </div>
+  ${o.limit?`<div class="card"><h3>Hạn mức chi phí hôm nay</h3><div>${money(t.cost)} / ${money2(o.limit)} <span class="hint">(${pct.toFixed(0)}%)</span></div><div class="bar"><i class="${pct>=90?'hot':''}" style="width:${pct}%"></i></div><div class="hint">Khi chạm hạn mức, thiết bị sẽ báo "đã hết hạn mức hôm nay" cho tới ngày mai. Đổi ở mục Cài đặt.</div></div>`:''}
+  <div class="card"><h3>Số lượt hội thoại 14 ngày qua</h3>
+    <svg viewBox="0 0 560 140" width="100%" role="img" aria-label="Số lượt hội thoại mỗi ngày">${bars}</svg></div>
+  <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(280px,1fr))">
+    <div class="card"><h3>Model đang dùng</h3><div>Hội thoại: <b>${esc(o.model||'chưa chọn')}</b></div><div>Nhận giọng nói: <b>${esc(o.asr_model||'mặc định')}</b></div></div>
+    <div class="card"><h3>Công cụ dùng nhiều (7 ngày)</h3>${o.tools.length?o.tools.map(([k,v])=>`<div>${esc(k)} <span class="tag">${v}</span></div>`).join(''):'<span class="hint">Chưa có</span>'}</div>
+  </div>`;
+  pendingBadge();timer=setInterval(()=>{if(document.hidden)return;overview()},30000)}
+
+/* ---------- devices ---------- */
+const STATE={pending:['warn','Chờ kích hoạt'],blocked:['bad','Bị khóa'],expired:['bad','Hết hạn gói'],limit:['warn','Hết lượt'],online:['ok','Đang hoạt động'],idle:['','Sẵn sàng']};
+const dshort=ts=>ts?new Date(ts*1000).toLocaleDateString('vi-VN'):'—';
+function planLine(d){
+  if(d.status!=='approved')return '';
+  const left=d.plan_expires?Math.ceil((d.plan_expires-Date.now()/1000)/86400):null;
+  const exp=d.plan_expires?`<span>Hết hạn ${dshort(d.plan_expires)} (${left>=0?'còn '+left+' ngày':'quá hạn '+(-left)+' ngày'})</span>`:(d.plan_name?'<span>Không hết hạn</span>':'');
+  return `<span>Gói: <b>${esc(d.plan_name||'chưa gán')}</b></span>${exp}<span>Hôm nay ${d.turns_today}${d.plan_daily?'/'+d.plan_daily:''} lượt</span><span>Tháng này ${d.turns_month}${d.plan_monthly?'/'+d.plan_monthly:''} lượt</span>`}
+async function devices(){
+  const [r,dkr,pl]=await Promise.all([api('/api/devices'),api('/api/decks'),api('/api/plans')]);
+  const list=r.devices,dk=dkr.decks,plans=pl.plans;
+  $('#view').innerHTML=`<h2>Thiết bị</h2>
+  <div class="card"><h3>Kích hoạt bằng mã</h3>
+    <p class="hint">Lần đầu bật máy và kết nối Wi-Fi, thiết bị tự đăng ký với server và <b>hiện, đọc to mã kích hoạt 6 số</b> trên màn hình. Nhập mã đó vào đây (hoặc bấm "Kích hoạt" ở thiết bị bên dưới) để thiết bị bắt đầu dùng gói mặc định.</p>
+    <div class="row"><input id="ac" type="text" inputmode="numeric" maxlength="6" placeholder="Mã 6 số" style="max-width:160px"><button class="p" id="ab">Kích hoạt</button><span class="msg" id="am"></span></div></div>
+  <div id="dl">${list.length?'':'<div class="card">Chưa có thiết bị nào đăng ký.</div>'}</div>`;
+  $('#dl').innerHTML=list.map(d=>{const s=STATE[d.state]||['','?'];const x=d.details;
+    return `<div class="dev ${d.status}" data-id="${esc(d.id)}">
+    <div class="row"><span class="dot2 ${d.online?'on':''}" title="${d.online?'Đang kết nối':'Offline'}"></span><b>${esc(d.name||d.id)}</b><span class="tag ${s[0]}">${s[1]}</span>${d.online&&d.state!=='online'?'<span class="tag ok">online</span>':''}
+      ${d.status==='pending'&&d.activation_code?`<span class="tag warn" style="font-size:14px">Mã kích hoạt: <b>${esc(d.activation_code)}</b></span>`:''}</div>
+    <div class="meta"><span>MAC ${esc(d.id)}</span><span>Firmware ${esc(d.fw_version||'?')}</span><span>Thấy lần cuối ${ago(d.last_seen)}</span><span>IP ${esc(d.last_ip||'?')}</span>
+      ${x.ssid?`<span>Wi-Fi ${esc(x.ssid)}${x.rssi!=null?` (${x.rssi} dBm)`:''}</span>`:''}${x.chip?`<span>${esc(x.chip)}${x.flash?` · ${Math.round(x.flash/1048576)} MB flash`:''}</span>`:''}</div>
+    <div class="meta" style="margin-top:-4px"><span>Đăng ký ${fmt(d.first_seen)}</span><span>Kích hoạt lần đầu ${d.activated_at?fmt(d.activated_at):'chưa'}</span>${planLine(d)}</div>
+    <div class="meta" style="margin-top:-4px"><span>${d.turns} lượt tổng · ${money(d.cost)}</span><span>Sổ từ: ${d.notebook} từ${d.notebook_due?` (${d.notebook_due} đến hạn ôn)`:''}</span><span>Offline: ${d.last_sync?'đồng bộ '+ago(d.last_sync)+' · '+d.sync_events+' lượt ôn':'chưa đồng bộ'}</span>
+      <span>Bộ từ: <select class="dk" style="width:auto;padding:2px 6px"><option value="0" ${d.deck_id?'':'selected'}>mặc định</option>${dk.map(k=>`<option value="${k.id}" ${k.id===d.deck_id?'selected':''}>${esc(k.name)}</option>`).join('')}</select></span>
+      ${d.status==='approved'?`<span>Gói: <select class="pl" style="width:auto;padding:2px 6px"><option value="0" ${d.plan_id?'':'selected'}>(không giới hạn)</option>${plans.map(p=>`<option value="${p.id}" ${p.id===d.plan_id?'selected':''}>${esc(p.name)}</option>`).join('')}</select></span>`:''}</div>
+    ${d.note?`<div class="hint" style="margin:-4px 0 8px">Ghi chú: ${esc(d.note)}</div>`:''}
+    <div class="act">
+      ${d.status!=='approved'?`<button class="s p" data-a="approve">${d.status==='blocked'?'Bỏ chặn':'Kích hoạt'}</button>`:''}
+      ${d.status==='approved'?'<button class="s" data-a="extend">Gia hạn</button>':''}
+      ${d.status!=='blocked'?'<button class="s d" data-a="block">Chặn</button>':''}
+      <button class="s" data-a="rename">Đổi tên / ghi chú</button>
+      <button class="s" data-a="reboot" ${d.online?'':'disabled'}>Khởi động lại</button>
+      <button class="s" data-a="disconnect" ${d.online?'':'disabled'}>Ngắt kết nối</button>
+      <button class="s" data-a="turns">Hội thoại</button><button class="s" data-a="vocab">Từ vựng</button>
+      <button class="s d" data-a="delete">Xóa</button></div></div>`}).join('');
+  $('#ab').onclick=async()=>{const j=await api('/api/device/activate',{code:$('#ac').value});
+    if(j.error)return setMsg($('#am'),j.error,'bad');setMsg($('#am'),'Đã kích hoạt '+j.id,'ok');devices();pendingBadge()};
+  $('#dl').onchange=async e=>{const el=e.target.closest('.dev');if(!el)return;const id=el.dataset.id;
+    if(e.target.matches('select.dk'))await api('/api/device/deck',{id,deck_id:+e.target.value});
+    else if(e.target.matches('select.pl')){const restart=confirm('Tính lại thời hạn của gói mới từ hôm nay?\nOK = tính lại từ hôm nay, Cancel = giữ nguyên ngày hết hạn hiện tại');
+      await api('/api/device/plan',{id,plan_id:+e.target.value,restart});devices()}};
+  $('#dl').onclick=async e=>{const b=e.target.closest('button[data-a]');if(!b)return;const el=b.closest('.dev'),id=el.dataset.id,d=list.find(x=>x.id===id);const a=b.dataset.a;
+    if(a==='approve')await api('/api/device/update',{id,status:'approved'});
+    else if(a==='block'){if(!confirm('Chặn thiết bị này? Nó sẽ bị ngắt kết nối trong vài giây.'))return;await api('/api/device/update',{id,status:'blocked'})}
+    else if(a==='extend'){const n=prompt('Gia hạn thêm bao nhiêu ngày?','30');if(!n)return;const j=await api('/api/device/extend',{id,days:+n});if(j.error)return alert(j.error)}
+    else if(a==='rename'){const n=prompt('Tên thiết bị',d.name||'');if(n===null)return;const t=prompt('Ghi chú (ví dụ: phòng khách, của bé An)',d.note||'');if(t===null)return;await api('/api/device/update',{id,name:n,note:t})}
+    else if(a==='reboot'){if(!confirm('Khởi động lại thiết bị này từ xa?'))return;await api('/api/device/command',{id,cmd:'reboot'});alert('Đã gửi lệnh, thiết bị sẽ khởi động lại trong vài giây.');return}
+    else if(a==='disconnect'){await api('/api/device/command',{id,cmd:'disconnect'});alert('Đã gửi lệnh ngắt kết nối.');return}
+    else if(a==='turns'){location.hash='turns?device='+encodeURIComponent(id);return}
+    else if(a==='vocab'){location.hash='vocab?device='+encodeURIComponent(id);return}
+    else if(a==='delete'){if(!confirm('Xóa thiết bị khỏi danh sách? (Thiết bị sẽ tự đăng ký lại nếu nó vẫn kết nối.)'))return;const purge=confirm('Xóa luôn lịch sử hội thoại và sổ từ vựng của thiết bị này?\n(OK = xóa hết, Cancel = giữ dữ liệu)');await api('/api/device/delete',{id,purge})}
+    devices();pendingBadge()};
+  pendingBadge();timer=setInterval(()=>{if(!document.hidden&&!document.activeElement.closest('.dev')&&document.activeElement.id!=='ac')devices()},15000)}
+
+/* ---------- plans ---------- */
+async function plans(){
+  const r=await api('/api/plans');const list=r.plans;
+  const lim=n=>n?n.toLocaleString('vi-VN'):'không giới hạn';
+  $('#view').innerHTML=`<h2>Gói cước</h2>
+  <p class="hint">Gói quyết định thiết bị dùng được bao lâu và bao nhiêu lượt hội thoại (một lượt = một câu người học nói). Thiết bị mới được kích hoạt sẽ nhận <b>gói mặc định</b>. Hết hạn hoặc hết lượt, Sophia báo bằng giọng nói. Giá chỉ để ghi chú, hệ thống chưa thu tiền.</p>
+  <div class="card" style="padding:0"><div class="scroll" style="max-height:none"><table><thead><tr><th>Mặc định</th><th>Gói</th><th class="n">Giá (đ)</th><th class="n">Thời hạn</th><th class="n">Lượt/ngày</th><th class="n">Lượt/tháng</th><th class="n">Thiết bị</th><th></th></tr></thead><tbody>
+  ${list.map(p=>`<tr data-id="${p.id}"><td><input type="radio" name="pd" ${p.is_default?'checked':''}></td><td><b>${esc(p.name)}</b><div class="hint">${esc(p.description)}</div></td><td class="n">${p.price?p.price.toLocaleString('vi-VN'):'—'}</td><td class="n">${p.duration_days?p.duration_days+' ngày':'không hết hạn'}</td><td class="n">${lim(p.daily_turns)}</td><td class="n">${lim(p.monthly_turns)}</td><td class="n">${p.devices}</td>
+    <td style="white-space:nowrap"><button class="s" data-a="edit">Sửa</button> <button class="s d" data-a="del">Xóa</button></td></tr>`).join('')}</tbody></table></div></div>
+  <div class="card"><h3 id="pft">Thêm gói mới</h3><input type="hidden" id="pid">
+    <div class="row"><div class="grow"><label class="f" for="pn">Tên gói</label><input id="pn" type="text"></div><div class="grow"><label class="f" for="pdsc">Mô tả</label><input id="pdsc" type="text"></div></div>
+    <div class="row"><div class="grow"><label class="f" for="pp">Giá (đồng, chỉ để ghi chú)</label><input id="pp" type="number" min="0" value="0"></div>
+      <div class="grow"><label class="f" for="pdur">Thời hạn (ngày, 0 = không hết hạn)</label><input id="pdur" type="number" min="0" value="30"></div>
+      <div class="grow"><label class="f" for="pdl">Lượt mỗi ngày (0 = không giới hạn)</label><input id="pdl" type="number" min="0" value="100"></div>
+      <div class="grow"><label class="f" for="pml">Lượt mỗi tháng (0 = không giới hạn)</label><input id="pml" type="number" min="0" value="0"></div></div>
+    <div class="row" style="margin-top:12px"><button class="p" id="ps">Lưu gói</button><button id="pc2" hidden>Hủy sửa</button><span class="msg" id="pm"></span></div></div>`;
+  document.querySelectorAll('input[name=pd]').forEach(x=>x.onchange=async()=>{await api('/api/plans/default',{id:+x.closest('tr').dataset.id});setMsg($('#pm'),'Đã đổi gói mặc định','ok')});
+  document.querySelectorAll('tbody button[data-a]').forEach(b=>b.onclick=async()=>{const id=+b.closest('tr').dataset.id,p=list.find(x=>x.id===id);
+    if(b.dataset.a==='del'){if(!confirm('Xóa gói "'+p.name+'"?'))return;const j=await api('/api/plans/delete',{id});if(j.error)return alert(j.error);plans();return}
+    $('#pft').textContent='Sửa gói';$('#pid').value=id;$('#pn').value=p.name;$('#pdsc').value=p.description;$('#pp').value=p.price;$('#pdur').value=p.duration_days;$('#pdl').value=p.daily_turns;$('#pml').value=p.monthly_turns;$('#pc2').hidden=false;$('#pn').focus()});
+  $('#pc2').onclick=()=>plans();
+  $('#ps').onclick=async()=>{const j=await api('/api/plans/save',{id:+$('#pid').value||0,name:$('#pn').value,description:$('#pdsc').value,price:+$('#pp').value,duration_days:+$('#pdur').value,daily_turns:+$('#pdl').value,monthly_turns:+$('#pml').value});
+    if(j.error)return setMsg($('#pm'),j.error,'bad');plans()}}
+
+/* ---------- conversations ---------- */
+async function turns(){
+  const dev=hashParam('device');const dl=(await api('/api/devices')).devices;
+  $('#view').innerHTML=`<h2>Hội thoại</h2>
+  <div class="row" style="margin-bottom:12px"><select id="fd" class="grow"><option value="">Tất cả thiết bị</option>${dl.map(d=>`<option value="${esc(d.id)}" ${d.id===dev?'selected':''}>${esc(d.name||d.id)}</option>`).join('')}</select>
+    <input id="fq" type="search" class="grow" placeholder="Tìm trong câu hỏi / câu trả lời"><button id="fr">Làm mới</button></div>
+  <div class="card" id="tl"></div><div class="row"><button id="more" hidden>Xem thêm</button></div>
+  <p class="hint">Nội dung hội thoại được lưu để bạn xem lại và tự động xóa sau số ngày đặt ở Cài đặt.</p>`;
+  let before=0;
+  const nameOf=id=>{const d=dl.find(x=>x.id===id);return d?(d.name||d.id):id};
+  async function load(reset){if(reset){before=0;$('#tl').innerHTML=''}
+    const q=new URLSearchParams({limit:40,device:$('#fd').value,q:$('#fq').value,before});
+    const r=await api('/api/turns?'+q);const t=r.turns;
+    if(reset&&!t.length)$('#tl').innerHTML='<span class="hint">Chưa có hội thoại.</span>';
+    $('#tl').insertAdjacentHTML('beforeend',t.map(x=>`<div class="turn"><div class="u">🧑 ${esc(x.user_text||'(không nhận ra giọng nói)')}</div>
+      <div class="r">🤖 ${esc(x.reply_text||'')}</div>
+      <div class="m"><span>${fmt(x.ts)}</span><span>${esc(nameOf(x.device))}</span>${x.latency_ms?`<span>trễ ${(x.latency_ms/1000).toFixed(1)}s</span>`:''}${x.asr_ms?`<span>nghe ${(x.asr_ms/1000).toFixed(1)}s</span>`:''}<span>${money(x.cost)}</span>${x.tools?`<span class="tag">${esc(x.tools)}</span>`:''}${x.model?`<span>${esc(x.model)}</span>`:''}${x.ok?'':`<span class="tag bad">${esc(x.error||'lỗi')}</span>`}</div></div>`).join(''));
+    if(t.length)before=t[t.length-1].id;$('#more').hidden=t.length<40}
+  $('#fd').onchange=()=>load(true);$('#fr').onclick=()=>load(true);$('#more').onclick=()=>load(false);
+  let to;$('#fq').oninput=()=>{clearTimeout(to);to=setTimeout(()=>load(true),350)};load(true)}
+
+/* ---------- vocabulary ---------- */
+async function vocab(){
+  const dev=hashParam('device');const dl=(await api('/api/devices')).devices;
+  $('#view').innerHTML=`<h2>Từ vựng</h2><div id="dk"></div><h3>Sổ từ vựng của thiết bị</h3>
+  <div class="row" style="margin-bottom:12px"><select id="vd" class="grow"><option value="">Tất cả thiết bị</option>${dl.map(d=>`<option value="${esc(d.id)}" ${d.id===dev?'selected':''}>${esc(d.name||d.id)}</option>`).join('')}</select>
+    <a id="csv"><button>Tải CSV</button></a></div>
+  <div class="card" style="padding:0"><div class="scroll" style="max-height:none"><table><thead><tr><th>Từ</th><th>Nghĩa</th><th>Ví dụ</th><th class="n">Đã ôn</th><th>Ôn lại</th><th></th></tr></thead><tbody id="vb"></tbody></table></div></div><div class="hint" id="vc"></div>`;
+  async function load(){const d=$('#vd').value;$('#csv').href=B+'/api/vocab.csv'+(d?'?device='+encodeURIComponent(d):'');
+    const r=await api('/api/vocab'+(d?'?device='+encodeURIComponent(d):''));const now=Date.now()/1000;
+    $('#vc').textContent=r.words.length+' từ · '+r.words.filter(w=>w.due<=now).length+' từ đến hạn ôn';
+    $('#vb').innerHTML=r.words.map(w=>`<tr data-d="${esc(w.device)}" data-w="${esc(w.word)}"><td><b>${esc(w.word)}</b></td><td>${esc(w.meaning)}</td><td>${esc(w.example)}</td><td class="n">${w.reps}</td><td>${w.due<=now?'<span class="tag warn">đến hạn</span>':fmt(w.due)}</td>
+      <td style="white-space:nowrap"><button class="s" data-a="edit">Sửa</button> <button class="s" data-a="reset">Ôn lại</button> <button class="s d" data-a="del">Xóa</button></td></tr>`).join('')||'<tr><td colspan="6" class="hint">Chưa có từ nào.</td></tr>';
+    $('#vb').onclick=async e=>{const b=e.target.closest('button');if(!b)return;const tr=b.closest('tr'),device=tr.dataset.d,word=tr.dataset.w;
+      if(b.dataset.a==='del'){if(confirm('Xóa từ "'+word+'"?'))await api('/api/vocab/delete',{device,word})}
+      else if(b.dataset.a==='reset')await api('/api/vocab/reset',{device,word});
+      else{const w=r.words.find(x=>x.word===word&&x.device===device);const m=prompt('Nghĩa',w.meaning);if(m===null)return;const ex=prompt('Ví dụ',w.example||'');if(ex===null)return;await api('/api/vocab/update',{device,word,meaning:m,example:ex})}
+      load()}}
+  $('#vd').onchange=load;load();deckPanel()}
+
+/* ---------- decks (course vocabulary) ---------- */
+async function deckPanel(){
+  const r=await api('/api/decks');const box=$('#dk');if(!box)return;
+  box.innerHTML=`<div class="card"><h3>Bộ từ vựng</h3>
+    <p class="hint">Sophia dạy từ mới từ bộ từ của từng thiết bị (từ nào đã dạy sẽ vào sổ từ vựng và được ôn theo lịch). Thiết bị chưa gán bộ riêng dùng bộ mặc định. ${r.notebook_words} từ đã vào sổ.</p>
+    ${r.decks.length?`<div class="scroll" style="max-height:none"><table><thead><tr><th>Mặc định</th><th>Bộ từ</th><th class="n">Số từ</th><th class="n">Thiết bị</th><th></th></tr></thead><tbody>${r.decks.map(d=>`<tr data-id="${d.id}"><td><input type="radio" name="dd" ${(r.default?r.default===d.id:d.id===r.decks[0].id)?'checked':''}></td><td><b>${esc(d.name)}</b><div class="hint">${esc(d.description)}</div></td><td class="n">${d.words.toLocaleString('vi-VN')}</td><td class="n">${d.devices}</td><td style="white-space:nowrap"><button class="s" data-a="view">Xem từ</button> <button class="s d" data-a="del">Xóa</button></td></tr>`).join('')}</tbody></table></div>`:'<div class="hint">Chưa có bộ từ nào.</div>'}
+    <div id="dv" style="margin-top:12px"></div>
+    <h3 style="margin-top:16px">Nhập bộ từ mới</h3>
+    <p class="hint">File .tsv, mỗi dòng một từ gồm 4 cột cách nhau bằng Tab: <b>từ, phiên âm, nghĩa, ví dụ</b> (dòng bắt đầu bằng # là chú thích). Nhập lại cùng tên sẽ thay thế bộ cũ.</p>
+    <div class="row"><input id="dn" type="text" placeholder="Tên bộ từ" style="max-width:200px"><input id="dsx" type="text" class="grow" placeholder="Mô tả (tuỳ chọn)"><input id="df" type="file" accept=".tsv,.txt,.csv"><button class="p" id="di">Nhập</button></div><div class="msg" id="dm"></div></div>`;
+  box.querySelectorAll('input[name=dd]').forEach(x=>x.onchange=async()=>{await api('/api/decks/default',{id:+x.closest('tr').dataset.id});setMsg($('#dm'),'Đã đổi bộ mặc định','ok')});
+  box.querySelectorAll('button[data-a]').forEach(b=>b.onclick=async()=>{const id=+b.closest('tr').dataset.id,d=r.decks.find(x=>x.id===id);
+    if(b.dataset.a==='del'){if(!confirm('Xóa bộ "'+d.name+'" ('+d.words+' từ)? Từ đã dạy trong sổ từ vựng vẫn được giữ.'))return;await api('/api/decks/delete',{id});deckPanel();return}
+    const v=$('#dv');v.innerHTML=`<div class="row" style="margin-bottom:8px"><b>${esc(d.name)}</b><input id="dq" type="search" class="grow" placeholder="Tìm từ bắt đầu bằng…"></div><div class="scroll" style="max-height:300px"><table><tbody id="dw"></tbody></table></div>`;
+    async function lw(){const w=(await api('/api/decks/words?deck='+id+'&q='+encodeURIComponent($('#dq').value))).words;
+      $('#dw').innerHTML=w.map(x=>`<tr><td class="n">${x.rank}</td><td><b>${esc(x.word)}</b> <span class="hint">${esc(x.ipa)}</span></td><td>${esc(x.meaning)}</td><td class="hint">${esc(x.example)}</td></tr>`).join('')||'<tr><td class="hint">Không có từ</td></tr>'}
+    let to;$('#dq').oninput=()=>{clearTimeout(to);to=setTimeout(lw,300)};lw()});
+  $('#di').onclick=async()=>{const n=$('#dn').value.trim(),f=$('#df').files[0],m=$('#dm');if(!n||!f)return setMsg(m,'Nhập tên và chọn file','bad');setMsg(m,'Đang nhập…');
+    const res=await fetch(B+'/api/decks/import?name='+encodeURIComponent(n)+'&description='+encodeURIComponent($('#dsx').value)+'&position='+(r.decks.length+1),{method:'PUT',body:f});const j=await res.json();
+    if(j.error)return setMsg(m,j.error,'bad');await deckPanel();setMsg($('#dm'),'Đã nhập '+j.words+' từ'+(j.skipped?' ('+j.skipped+' dòng lỗi bị bỏ qua)':''),'ok')}}
+
+/* ---------- offline study packs ---------- */
+async function offline(){
+  const r=await api('/api/packs');
+  const mb=n=>(n/1048576).toFixed(2)+' MB';
+  const store=r.store_bytes;
+  $('#view').innerHTML=`<h2>Học offline</h2>
+  <div class="card"><h3>Cách hoạt động</h3>
+    <p class="hint" style="margin:0">Thiết bị có thể học <b>không cần mạng</b>: thẻ ghi nhớ, nghe phát âm từng từ, tự xếp lịch ôn (SM-2). Bạn dựng một <b>gói học</b> từ bộ từ ở đây (chữ + giọng đọc từng từ); thiết bị tải gói về qua Wi-Fi một lần và lưu trong bộ nhớ flash (phân vùng <b>${mb(store)}</b>, board không có khe thẻ SD). Khi có mạng lại, kết quả học offline được gửi về và gộp vào sổ từ vựng.</p></div>
+  <div id="pk"></div>
+  <div class="card"><h3>Đồng bộ của thiết bị</h3>
+    ${r.sync.length?`<table><thead><tr><th>Thiết bị</th><th>Gói đã tải</th><th>Đồng bộ lần cuối</th><th class="n">Lượt ôn offline đã gửi</th></tr></thead><tbody>${r.sync.map(s=>`<tr><td>${esc(s.name||s.id)}</td><td>${esc(s.pack_id||'—')}</td><td>${s.last_sync?ago(s.last_sync):'chưa'}</td><td class="n">${s.events||0}</td></tr>`).join('')}</tbody></table>`:'<span class="hint">Chưa có thiết bị nào.</span>'}</div>`;
+  $('#pk').innerHTML=r.decks.map(d=>{const b=d.build||{},mf=d.pack;const running=b.state==='running';
+    const pct=b.total?Math.min(100,Math.round((b.done||0)/b.total*100)):0;
+    return `<div class="card" data-id="${d.id}"><div class="row"><b style="font-size:16px">${esc(d.name)}</b><span class="hint">${d.words.toLocaleString('vi-VN')} từ trong bộ</span></div>
+    ${mf?`<div class="meta" style="color:var(--mut);font-size:13px;margin:6px 0">Gói hiện tại: <b>${mf.count.toLocaleString('vi-VN')} thẻ</b> · ${mb(mf.total_bytes)} (${Math.round(mf.total_bytes/store*100)}% bộ nhớ thiết bị) · ${mf.audio?'có giọng đọc '+esc(mf.bitrate):'không có giọng đọc'} · dựng ${ago(mf.built)}${b.missing_audio?` · <span class="bad">${b.missing_audio} từ thiếu âm thanh</span>`:''}</div>`:'<div class="hint" style="margin:6px 0">Chưa có gói cho bộ từ này.</div>'}
+    ${running?`<div class="bar"><i style="width:${pct}%"></i></div><div class="hint">Đang dựng: ${b.done||0} / ${b.total||'?'} từ (${pct}%). Khoảng 1 giây mỗi từ, bạn có thể rời trang.</div>`:''}
+    ${b.state==='error'?`<div class="msg bad">Lỗi dựng gói: ${esc(b.error)}</div>`:''}
+    <div class="row" style="margin-top:10px">
+      <label class="f" style="margin:0">Số từ</label><input class="cnt" type="number" min="50" max="6000" step="50" value="${mf?mf.count:2000}" style="width:110px">
+      <label class="f" style="margin:0">Chất lượng</label><select class="br" style="width:auto"><option value="12k">Nhỏ (12 kbps)</option><option value="16k" selected>Cân bằng (16 kbps)</option><option value="24k">Tốt (24 kbps)</option></select>
+      <span class="hint est"></span>
+      <button class="p" data-a="build" ${running?'disabled':''}>${mf?'Dựng lại':'Dựng gói'}</button>
+      ${mf?'<button class="d" data-a="del">Xóa gói</button>':''}</div></div>`}).join('')||'<div class="card hint">Chưa có bộ từ nào. Hãy nhập bộ từ ở tab Từ vựng.</div>';
+  const est=card=>{const n=+card.querySelector('.cnt').value||0,br=card.querySelector('.br').value;
+    const per={'12k':1100,'16k':1400,'24k':2000}[br]+170;const bytes=n*per;const hot=bytes>store*0.95;
+    const e=card.querySelector('.est');e.textContent='≈ '+mb(bytes)+(hot?' — vượt bộ nhớ thiết bị!':'');e.className='hint est '+(hot?'bad':'')};
+  document.querySelectorAll('#pk .card').forEach(c=>{est(c);c.querySelector('.cnt').oninput=()=>est(c);c.querySelector('.br').onchange=()=>est(c)});
+  $('#pk').onclick=async e=>{const b=e.target.closest('button[data-a]');if(!b)return;const card=b.closest('.card'),id=+card.dataset.id;
+    if(b.dataset.a==='del'){if(!confirm('Xóa gói học offline của bộ từ này? Thiết bị đã tải rồi vẫn học được.'))return;await api('/api/packs/delete',{deck_id:id})}
+    else{const n=+card.querySelector('.cnt').value;if(n*1570>store&&!confirm('Gói lớn hơn bộ nhớ của thiết bị (' + mb(store) + '). Vẫn dựng?'))return;
+      const j=await api('/api/packs/build',{deck_id:id,count:n,bitrate:card.querySelector('.br').value});if(j.error)return alert(j.error)}
+    offline()};
+  const busy=r.decks.some(d=>d.build&&d.build.state==='running');
+  if(busy)timer=setInterval(()=>{if(!document.hidden)offline()},5000)}
+
+/* ---------- firmware ---------- */
+async function firmware(){
+  const r=await api('/api/firmware');
+  $('#view').innerHTML=`<h2>Firmware</h2>
+  <div class="card"><h3>Tải firmware mới</h3>
+    <p class="hint">Chọn file <b>english-learner.bin</b> (file app trong thư mục build, không phải bootloader hay merged-binary). Sau khi đặt làm bản phát hành, mỗi thiết bị sẽ tự cập nhật khi khởi động lại nếu phiên bản mới hơn bản đang chạy.</p>
+    <div class="row"><input id="fv" type="text" placeholder="Phiên bản, ví dụ 1.0.1" style="max-width:220px"><input id="ff" type="file" accept=".bin"><button class="p" id="fu">Tải lên</button></div><div class="msg" id="fm"></div></div>
+  <div class="card"><h3>Các bản đã tải lên</h3>
+    ${r.files.length?`<table><thead><tr><th>Phiên bản</th><th>Dung lượng</th><th>Tải lên</th><th>Trạng thái</th><th></th></tr></thead><tbody>${r.files.map(f=>`<tr><td><b>${esc(f.version)}</b></td><td>${bytes(f.size)}</td><td>${fmt(f.mtime)}</td><td>${r.release===f.version?'<span class="tag ok">đang phát hành</span>':''}</td>
+      <td style="white-space:nowrap">${r.release===f.version?'<button class="s" data-a="unrelease" data-v="'+esc(f.version)+'">Ngừng phát hành</button>':'<button class="s p" data-a="release" data-v="'+esc(f.version)+'">Phát hành</button>'} <button class="s d" data-a="del" data-v="${esc(f.version)}">Xóa</button></td></tr>`).join('')}</tbody></table>`:'<span class="hint">Chưa có file nào.</span>'}
+    <div class="hint" style="margin-top:8px">${r.release?'Đang phát hành: '+esc(r.release):'Chưa phát hành bản nào: thiết bị sẽ không tự cập nhật.'}</div></div>`;
+  $('#fu').onclick=async()=>{const v=$('#fv').value.trim(),f=$('#ff').files[0],m=$('#fm');
+    if(!v||!f)return setMsg(m,'Nhập phiên bản và chọn file','bad');setMsg(m,'Đang tải lên…');
+    const res=await fetch(B+'/api/firmware?version='+encodeURIComponent(v),{method:'PUT',body:f});const j=await res.json();
+    if(j.error)return setMsg(m,j.error,'bad');firmware()};
+  document.querySelectorAll('[data-a]').forEach(b=>b.onclick=async()=>{const v=b.dataset.v,a=b.dataset.a;
+    if(a==='release')await api('/api/firmware/release',{version:v});
+    else if(a==='unrelease')await api('/api/firmware/release',{version:''});
+    else if(confirm('Xóa firmware '+v+'?'))await api('/api/firmware/delete',{version:v});
+    firmware()})}
+
+/* ---------- settings ---------- */
+const VOICES=['en-US-EmmaMultilingualNeural','en-US-AvaMultilingualNeural','en-US-AndrewMultilingualNeural','en-US-BrianMultilingualNeural','en-US-JennyNeural','en-US-AriaNeural','en-GB-SoniaNeural','vi-VN-HoaiMyNeural','vi-VN-NamMinhNeural'];
+async function settings(){
+  const [{settings:s,defaults:df},st]=await Promise.all([api('/api/settings'),api('/api/state')]);
+  const v=(k,d)=>s[k]!==undefined?s[k]:d;
+  $('#view').innerHTML=`<h2>Cài đặt</h2>
+  <div class="card"><h3>Model AI (OpenRouter)</h3>
+    <label class="f" for="key">API key</label><input id="key" type="password" placeholder="sk-or-v1-…" autocomplete="off">
+    <div class="hint">${st.has_key?'Đã lưu key '+esc(st.key_hint)+' (để trống nếu không đổi).':'Chưa có key.'}</div>
+    <div style="margin-top:10px">Hội thoại: <b id="cLlm">${esc(st.model||'chưa chọn')}</b> · Nhận giọng nói: <b id="cAsr">${esc(st.asr_model||'mặc định')}</b></div>
+    <div class="row" style="margin:10px 0"><button id="mL" class="p">Chọn model hội thoại</button><button id="mA">Chọn model nhận giọng nói</button>
+      <input id="mq" type="search" class="grow" placeholder="Tìm model"><label class="tag"><input type="checkbox" id="mT" checked> tools</label><label class="tag"><input type="checkbox" id="mF"> miễn phí</label></div>
+    <div class="scroll"><table><thead><tr><th data-k="name">Model</th><th class="n" data-k="in">In $/1M</th><th class="n" data-k="out">Out $/1M</th><th class="n" data-k="turn">~$/1000 lượt</th><th class="n" data-k="ctx">Context</th></tr></thead><tbody id="mb"><tr><td colspan="5">Đang tải…</td></tr></tbody></table></div>
+    <div class="hint" id="mc">Model hội thoại nên có "tools"; model nhận giọng nói phải có "audio". "~$/1000 lượt" ước tính với ~1500 token vào + 100 token ra.</div>
+    <div class="row" style="margin-top:10px"><button id="mt">Thử gọi model</button><button class="p" id="ms">Lưu model</button></div><div class="msg" id="mm"></div></div>
+
+  <div class="card"><h3>Tính cách gia sư</h3>
+    <label class="f" for="sp">Prompt hệ thống</label><textarea id="sp" placeholder="${esc(df.prompt)}">${esc(v('prompt',''))}</textarea>
+    <div class="hint">Để trống = dùng prompt mặc định. Nhớ giữ các quy tắc về công cụ (lookup_word, save_word, next_review_word, grade_word) nếu bạn viết prompt riêng.</div>
+    <div class="row"><button class="s" id="spd">Điền prompt mặc định để sửa</button></div>
+    <label class="f" for="sg">Câu chào khi gọi tên wake word</label><input id="sg" type="text" value="${esc(v('wake_greeting',''))}" placeholder="${esc(df.wake_greeting)}">
+    <div class="row"><div class="grow"><label class="f" for="sv">Giọng đọc</label><input id="sv" list="vl" type="text" value="${esc(v('tts_voice',''))}" placeholder="${esc(df.tts_voice)}"><datalist id="vl">${VOICES.map(x=>`<option value="${x}">`).join('')}</datalist></div>
+      <div class="grow"><label class="f" for="sr">Tốc độ đọc</label><input id="sr" type="text" value="${esc(v('tts_rate',''))}" placeholder="${esc(df.tts_rate)} (ví dụ -10%, +0%)"></div></div></div>
+
+  <div class="card"><h3>Hành vi hội thoại</h3><div class="row">
+    <div class="grow"><label class="f" for="si">Im lặng bao lâu thì coi là nói xong (ms)</label><input id="si" type="number" min="300" max="3000" step="100" value="${esc(v('silence_ms',''))}" placeholder="${df.silence_ms}"></div>
+    <div class="grow"><label class="f" for="st">Temperature (0–1.5)</label><input id="st" type="number" min="0" max="1.5" step="0.1" value="${esc(v('temperature',''))}" placeholder="${df.temperature}"></div>
+    <div class="grow"><label class="f" for="sm">Độ dài tối đa câu trả lời (token)</label><input id="sm" type="number" min="50" max="2000" step="50" value="${esc(v('max_tokens',''))}" placeholder="${df.max_tokens}"></div>
+    <div class="grow"><label class="f" for="sh">Số tin nhắn nhớ trong 1 cuộc trò chuyện</label><input id="sh" type="number" min="2" max="60" value="${esc(v('history_messages',''))}" placeholder="${df.history_messages}"></div></div></div>
+
+  <div class="card"><h3>An toàn &amp; dữ liệu</h3>
+    <label class="sw"><input type="checkbox" id="sa" ${v('approval_required',true)?'checked':''}> Thiết bị mới phải được kích hoạt (nhập mã) trước khi dùng</label>
+    <div class="hint" style="margin:-4px 0 8px">Tắt tùy chọn này = thiết bị mới tự kích hoạt ngay với gói mặc định. Chỉ nên tắt khi đã đặt giới hạn gói chặt, vì ai biết địa chỉ server cũng có thể đăng ký.</div>
+    <div class="row"><div class="grow"><label class="f" for="sn">Số thiết bị mới tối đa mỗi địa chỉ IP mỗi ngày (0 = không giới hạn)</label><input id="sn" type="number" min="0" value="${v('max_new_per_ip_day',10)}"></div></div>
+    <div class="row"><div class="grow"><label class="f" for="sl">Hạn mức chi phí mỗi ngày (USD, 0 = không giới hạn)</label><input id="sl" type="number" min="0" step="0.5" value="${v('daily_cost_limit',2)}"></div>
+      <div class="grow"><label class="f" for="sd">Giữ lịch sử hội thoại (ngày, 0 = mãi mãi)</label><input id="sd" type="number" min="0" value="${v('log_retention_days',30)}"></div></div>
+    <div class="row" style="margin-top:12px"><button class="d" id="sc">Xóa toàn bộ lịch sử hội thoại</button></div></div>
+
+  <div class="row" style="margin-bottom:16px"><button class="p" id="sv2">Lưu cài đặt</button><span class="msg" id="sm2"></span></div>
+
+  <div class="card"><h3>Đổi mật khẩu quản trị</h3><div class="row"><input id="pc" type="password" class="grow" placeholder="Mật khẩu hiện tại" autocomplete="current-password"><input id="pn" type="password" class="grow" placeholder="Mật khẩu mới (≥10 ký tự)" autocomplete="new-password"><button id="pb">Đổi</button></div>
+    <div class="msg" id="pm"></div><div class="hint">Sau khi đổi, trình duyệt sẽ hỏi lại mật khẩu.</div></div>`;
+
+  /* models */
+  let models=[],mode='llm',sel={llm:st.model||'',asr:st.asr_model||''},sk='turn',sd=1;
+  const turn=m=>(m.in*1500+m.out*100)/1e3, mon=x=>x===0?'Free':x<0.01?x.toFixed(4):x<1?x.toFixed(3):x.toFixed(2);
+  const ctx=n=>n>=1e6?(n/1e6).toFixed(1)+'M':n>=1e3?Math.round(n/1e3)+'K':n;
+  function rm(){const q=$('#mq').value.toLowerCase(),t=$('#mT').checked&&mode==='llm',f=$('#mF').checked;
+    let l=models.filter(m=>(mode==='asr'?m.audio:true)&&(!t||m.tools)&&(!f||m.free)&&(m.id+' '+m.name).toLowerCase().includes(q));
+    l.sort((a,b)=>{const pa=(a.id===sel[mode])?0:1,pb=(b.id===sel[mode])?0:1;if(pa!==pb)return pa-pb;const x=sk==='turn'?turn(a):a[sk],y=sk==='turn'?turn(b):b[sk];return(typeof x==='string'?x.localeCompare(y):x-y)*sd});
+    $('#mb').innerHTML=l.slice(0,300).map(m=>`<tr class="m ${m.id===sel[mode]?'sel':''}" data-id="${esc(m.id)}"><td>${esc(m.name)} ${m.tools?'<span class="tag">tools</span>':''}${m.audio?' <span class="tag">audio</span>':''}${m.free?' <span class="tag ok">free</span>':''}<div class="hint">${esc(m.id)}</div></td><td class="n">${mon(m.in)}</td><td class="n">${mon(m.out)}</td><td class="n">${m.free?'Free':'$'+mon(turn(m))}</td><td class="n">${ctx(m.ctx)}</td></tr>`).join('')||'<tr><td colspan="5">Không có model phù hợp</td></tr>';
+    $('#cLlm').textContent=sel.llm||'chưa chọn';$('#cAsr').textContent=sel.asr||'mặc định';
+    $('#mL').className=mode==='llm'?'p':'';$('#mA').className=mode==='asr'?'p':''}
+  $('#mb').onclick=e=>{const tr=e.target.closest('tr.m');if(tr){sel[mode]=tr.dataset.id;rm()}};
+  $('#mL').onclick=()=>{mode='llm';rm()};$('#mA').onclick=()=>{mode='asr';rm()};
+  document.querySelectorAll('.scroll th[data-k]').forEach(th=>th.onclick=()=>{const k=th.dataset.k;if(sk===k)sd*=-1;else{sk=k;sd=1}rm()});
+  ['mq','mT','mF'].forEach(i=>$('#'+i).oninput=rm);
+  $('#mt').onclick=async()=>{const m=sel[mode];if(!m)return setMsg($('#mm'),'Hãy chọn model','bad');setMsg($('#mm'),'Đang thử…');
+    const r=await api('/api/test',{model:m,api_key:$('#key').value});r.ok?setMsg($('#mm'),`OK (${r.ms} ms): “${r.reply.trim()}”`,'ok'):setMsg($('#mm'),r.error,'bad')};
+  $('#ms').onclick=async()=>{if(!sel.llm)return setMsg($('#mm'),'Hãy chọn model hội thoại','bad');
+    const r=await api('/api/save',{model:sel.llm,asr_model:sel.asr,api_key:$('#key').value});
+    if(r.error)return setMsg($('#mm'),r.error,'bad');$('#key').value='';setMsg($('#mm'),'Đã lưu. Áp dụng từ cuộc trò chuyện tiếp theo.','ok')};
+  api('/api/models').then(r=>{if(r.error){$('#mb').innerHTML='<tr><td colspan="5">Lỗi tải model: '+esc(r.error)+'</td></tr>';return}models=r.models;rm()});
+
+  /* behaviour */
+  $('#spd').onclick=()=>{$('#sp').value=df.prompt};
+  const num=id=>{const x=$(id).value;return x===''?'':Number(x)};
+  $('#sv2').onclick=async()=>{const r=await api('/api/settings',{prompt:$('#sp').value.trim()===df.prompt.trim()?'':$('#sp').value,wake_greeting:$('#sg').value,tts_voice:$('#sv').value.trim(),tts_rate:$('#sr').value.trim(),
+      silence_ms:num('#si'),temperature:num('#st'),max_tokens:num('#sm'),history_messages:num('#sh'),approval_required:$('#sa').checked,max_new_per_ip_day:num('#sn')===''?0:num('#sn'),daily_cost_limit:num('#sl')===''?0:num('#sl'),log_retention_days:num('#sd')===''?0:num('#sd')});
+    setMsg($('#sm2'),r.ok?'Đã lưu. Áp dụng từ cuộc trò chuyện tiếp theo.':(r.error||'Lỗi'),r.ok?'ok':'bad')};
+  $('#sc').onclick=async()=>{if(!confirm('Xóa TOÀN BỘ lịch sử hội thoại? Không thể khôi phục.'))return;const r=await api('/api/turns/clear',{older_days:0});setMsg($('#sm2'),'Đã xóa '+r.deleted+' lượt','ok')};
+  $('#pb').onclick=async()=>{const r=await api('/api/password',{current:$('#pc').value,new:$('#pn').value});
+    r.ok?setMsg($('#pm'),'Đã đổi. Tải lại trang để đăng nhập bằng mật khẩu mới.','ok'):setMsg($('#pm'),r.error,'bad')}}
+
+/* ---------- logs ---------- */
+async function logs(){
+  $('#view').innerHTML=`<h2>Nhật ký backend</h2><div class="row" style="margin-bottom:10px"><select id="ln"><option>100</option><option selected>200</option><option>500</option><option>1000</option></select> dòng
+    <label class="tag"><input type="checkbox" id="la" checked> tự làm mới</label><input id="lf" type="search" class="grow" placeholder="Lọc (ví dụ: ERROR, asr, latency)"><button id="lr">Làm mới</button></div><pre class="log" id="lp"></pre>`;
+  async function load(){const r=await api('/api/logs?lines='+$('#ln').value);const f=$('#lf').value.toLowerCase();
+    const lines=(r.lines||[]).filter(l=>!f||l.toLowerCase().includes(f));const p=$('#lp');const atEnd=p.scrollTop+p.clientHeight>=p.scrollHeight-40;
+    p.textContent=lines.join('\n');if(atEnd)p.scrollTop=p.scrollHeight}
+  await load();$('#lp').scrollTop=$('#lp').scrollHeight;$('#lr').onclick=load;$('#ln').onchange=load;$('#lf').oninput=load;
+  timer=setInterval(()=>{if($('#la').checked&&!document.hidden)load()},5000)}
+
+go();pendingBadge();
+</script>
+</body>
+</html>

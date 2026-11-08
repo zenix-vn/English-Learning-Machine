@@ -1,0 +1,11 @@
+{
+    "manufacturer": "english-learner",
+    "type": "english-learner",
+    "target": "esp32s3",
+    "builds": [
+        {
+            "name": "english-learner",
+            "sdkconfig_append": []
+        }
+    ]
+}
