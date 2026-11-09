@@ -4,7 +4,7 @@
 #include <esp_heap_caps.h>
 #include <esp_log.h>
 #include <esp_timer.h>
-#include <mbedtls/sha256.h>
+#include <psa/crypto.h>
 #include <sys/stat.h>
 #include <sys/time.h>
 
@@ -111,17 +111,20 @@ bool Download(const Endpoint& ep, const std::string& pack_id, const std::string&
         if (!f) return false;
         std::unique_ptr<char, decltype(&heap_caps_free)> buf(
             static_cast<char*>(heap_caps_malloc(kChunk, MALLOC_CAP_INTERNAL)), heap_caps_free);
-        mbedtls_sha256_context sha;
-        mbedtls_sha256_init(&sha);
-        mbedtls_sha256_starts(&sha, 0);
+        // mbedtls 4 (ESP-IDF 6) dropped the legacy mbedtls_sha256_* API; use PSA Crypto.
+        psa_crypto_init();  // idempotent
+        psa_hash_operation_t sha = PSA_HASH_OPERATION_INIT;
         size_t total = 0;
         int64_t last_report = 0;
-        bool failed = !buf;
+        bool failed = !buf || psa_hash_setup(&sha, PSA_ALG_SHA_256) != PSA_SUCCESS;
         while (!failed) {
             auto got = http->Read(buf.get(), kChunk);
             if (!got) { failed = true; break; }
             if (*got == 0) break;
-            mbedtls_sha256_update(&sha, reinterpret_cast<unsigned char*>(buf.get()), *got);
+            if (psa_hash_update(&sha, reinterpret_cast<const uint8_t*>(buf.get()), *got) != PSA_SUCCESS) {
+                failed = true;
+                break;
+            }
             if (std::fwrite(buf.get(), 1, *got, f) != static_cast<size_t>(*got)) { failed = true; break; }
             total += *got;
             const int64_t now = esp_timer_get_time();
@@ -130,9 +133,13 @@ bool Download(const Endpoint& ep, const std::string& pack_id, const std::string&
                 status(label + " " + std::to_string(total * 100 / (size ? size : 1)) + "%");
             }
         }
-        unsigned char digest[32];
-        mbedtls_sha256_finish(&sha, digest);
-        mbedtls_sha256_free(&sha);
+        unsigned char digest[32] = {};
+        size_t digest_len = 0;
+        if (failed || psa_hash_finish(&sha, digest, sizeof(digest), &digest_len) != PSA_SUCCESS ||
+            digest_len != sizeof(digest)) {
+            failed = true;
+        }
+        psa_hash_abort(&sha);
         std::fclose(f);
         http->Close();
         if (!failed && total == size && Hex(digest, 32) == sha256) return true;

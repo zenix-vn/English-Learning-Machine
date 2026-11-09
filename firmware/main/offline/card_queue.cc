@@ -33,6 +33,38 @@ Pick NextCard(const Progress& progress, uint32_t now, uint32_t new_today, uint32
     return {};
 }
 
+Pick NextCardFor(const Progress& progress, uint32_t now, uint32_t new_today, uint32_t new_per_day, int avoid,
+                 Focus focus, bool extra) {
+    int learning = -1, review = -1, fresh = -1, soonest = -1;
+    uint32_t learning_due = std::numeric_limits<uint32_t>::max();
+    uint32_t review_due = learning_due, soonest_due = learning_due;
+    for (size_t i = 0; i < progress.Count(); ++i) {
+        if (static_cast<int>(i) == avoid) continue;
+        const CardState& c = progress.At(i);
+        if (!(c.flags & kSeen)) {
+            if (fresh < 0) fresh = static_cast<int>(i);
+            continue;
+        }
+        if (c.due <= now) {
+            if (IsLearning(c)) {
+                if (c.due < learning_due) { learning_due = c.due; learning = static_cast<int>(i); }
+            } else if (c.due < review_due) {
+                review_due = c.due; review = static_cast<int>(i);
+            }
+        } else if (c.due < soonest_due) {
+            soonest_due = c.due; soonest = static_cast<int>(i);
+        }
+    }
+    if (learning >= 0) return {learning, PickKind::kLearning};
+    if (focus == Focus::kNew) {
+        if (fresh >= 0 && (extra || new_today < new_per_day)) return {fresh, PickKind::kNew};
+        return {};
+    }
+    if (review >= 0) return {review, PickKind::kDue};
+    if (extra && soonest >= 0) return {soonest, PickKind::kExtra};
+    return {};
+}
+
 QueueStats Stats(const Progress& progress, uint32_t now, uint32_t new_today, uint32_t new_per_day) {
     QueueStats s;
     for (size_t i = 0; i < progress.Count(); ++i) {

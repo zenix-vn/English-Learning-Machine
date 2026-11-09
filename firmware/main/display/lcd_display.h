@@ -11,6 +11,12 @@
 
 #define PREVIEW_IMAGE_DURATION_MS 5000
 
+// Off-screen page switching (English Learner board; no-ops elsewhere). The RGB panel has two frame buffers.
+// After LcdPageBegin() everything LVGL draws goes to the hidden one while the displayed page stays untouched;
+// LcdPageFlip() then shows it (at the next frame, without tearing). See ui::SwitchPage in home/ui_kit.h.
+void LcdPageBegin();
+void LcdPageFlip();
+
 class LcdDisplay : public LvglDisplay {
 protected:
     esp_lcd_panel_io_handle_t panel_io_ = nullptr;

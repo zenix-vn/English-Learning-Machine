@@ -38,7 +38,11 @@ public:
     CardState& Mutable(size_t i) { return cards_[i]; }
 
     // Grades a card, appends it to the journal and snapshots every kSnapshotEvery reviews.
-    bool Record(size_t card, int quality, uint32_t now);
+    // With `defer` the review is kept in RAM only until Flush() (or Save()) writes it: a write to the flash pauses the
+    // cache for tens of milliseconds, which shows as noise on the RGB panel, so the study screen batches the writes.
+    bool Record(size_t card, int quality, uint32_t now, bool defer = false);
+    bool Flush();                       // writes the deferred reviews to the journal (and a snapshot when due)
+    size_t Deferred() const { return pending_.size(); }
     bool Save();
 
     // Reviews not yet uploaded, oldest first.
@@ -67,6 +71,7 @@ private:
     uint32_t applied_ = 0, uploaded_ = 0, journal_count_ = 0;
     uint32_t new_day_ = 0, new_count_ = 0, last_time_ = 0;
     uint32_t since_snapshot_ = 0;
+    std::vector<ReviewEvent> pending_;      // reviews graded but not yet in the journal
     uint32_t saved_count_ = 0;          // card count recorded in the snapshot that was loaded
 };
 

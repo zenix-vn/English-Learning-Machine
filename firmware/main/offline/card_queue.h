@@ -21,6 +21,16 @@ struct QueueStats {
     uint32_t new_left = 0;      // new cards still allowed today
 };
 
+// Which cards a study mode may show.
+enum class Focus { kNew, kReview };
+
+// Next card for the "new words" and "review" programmes. Cards in their short relearning steps come first in
+// both. kNew then offers never-studied cards (up to `new_per_day`, or without a limit when `extra`); kReview then
+// offers reviews that are due (and, when `extra`, the card that will be due soonest). Returns kNone when there is
+// nothing to show.
+Pick NextCardFor(const Progress& progress, uint32_t now, uint32_t new_today, uint32_t new_per_day, int avoid,
+                 Focus focus, bool extra);
+
 // Order: learning cards due now, then reviews due now, then new cards (up to `new_per_day`),
 // then "extra practice" (the card that will be due soonest), so the learner is never left with an empty screen.
 // `avoid` is a card that must not be returned (the one just answered).

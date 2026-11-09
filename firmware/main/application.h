@@ -110,6 +110,13 @@ public:
 
     void Reboot();
     void WakeWordInvoke(const std::string& wake_word);
+    // Opens the audio channel and sends `text` as if the learner had said it (home screen tiles).
+    // Only acts while idle. The server answers with speech and the device then listens as usual.
+    void InvokeText(const std::string& text);
+    // Stops speaking and closes the audio channel; the device returns to idle.
+    void EndConversation();
+    // Reads the activation code aloud again (the home module calls it when the learner clicks on the code screen).
+    void ReadActivationCode(const std::string& code) { ShowActivationCode(code, ""); }
     bool UpgradeFirmware(const std::string& url, const std::string& version = "");
     bool CanEnterSleepMode();
     void SendMcpMessage(const std::string& payload);
@@ -171,6 +178,7 @@ private:
     void ContinueOpenAudioChannel(ListeningMode mode);
     void BeginWakeWordInvoke(const std::string& wake_word);
     void ContinueWakeWordInvoke(const std::string& wake_word);
+    void ContinueInvokeText(const std::string& text);
     void StartListeningAudio();
     void ConfigureWakeWordForListening();
     void ShowStartupWakeWordHint();

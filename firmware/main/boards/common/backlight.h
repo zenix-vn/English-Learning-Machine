@@ -15,6 +15,15 @@ public:
     void RestoreBrightness();
     void SetBrightness(uint8_t brightness, bool permanent = false);
     inline uint8_t brightness() const { return brightness_; }
+    // The level the user chose (not the momentary level while a page transition has darkened the screen).
+    inline uint8_t user_brightness() const { return user_brightness_; }
+    // Fades to `level` in about `ms` milliseconds without changing the level the user chose. Used by the page
+    // transitions: fade to 0, change the page while dark, fade back to user_brightness().
+    void FadeTo(uint8_t level, uint32_t ms);
+    // Switches the light off and on again at once, without fading and without touching the saved level.
+    // Used around flash writes: a write pauses the cache, which makes an RGB panel show noise, so the screen is
+    // darkened for those few milliseconds instead.
+    void SetBlank(bool blank);
 
 protected:
     void OnTransitionTimer();
@@ -23,7 +32,9 @@ protected:
     esp_timer_handle_t transition_timer_ = nullptr;
     uint8_t brightness_ = 0;
     uint8_t target_brightness_ = 0;
-    uint8_t step_ = 1;
+    int step_ = 1;
+    uint8_t user_brightness_ = 0;
+    bool blanked_ = false;
 };
 
 

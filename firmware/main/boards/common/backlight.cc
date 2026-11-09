@@ -48,6 +48,7 @@ void Backlight::SetBrightness(uint8_t brightness, bool permanent) {
         brightness = 100;
     }
 
+    user_brightness_ = brightness;
     if (brightness_ == brightness) {
         return;
     }
@@ -67,14 +68,35 @@ void Backlight::SetBrightness(uint8_t brightness, bool permanent) {
     ESP_LOGI(TAG, "Set brightness to %d", brightness);
 }
 
+void Backlight::FadeTo(uint8_t level, uint32_t ms) {
+    if (level > 100) level = 100;
+    target_brightness_ = level;
+    if (brightness_ == level) return;
+    const int delta = level > brightness_ ? level - brightness_ : brightness_ - level;
+    const int ticks = static_cast<int>(ms / 5) > 0 ? static_cast<int>(ms / 5) : 1;
+    int step = (delta + ticks - 1) / ticks;
+    if (step < 1) step = 1;
+    step_ = level > brightness_ ? step : -step;
+    if (transition_timer_ != nullptr) esp_timer_start_periodic(transition_timer_, 5 * 1000);
+}
+
+void Backlight::SetBlank(bool blank) {
+    blanked_ = blank;
+    SetBrightnessImpl(blank ? 0 : brightness_);
+}
+
 void Backlight::OnTransitionTimer() {
     if (brightness_ == target_brightness_) {
         esp_timer_stop(transition_timer_);
         return;
     }
 
-    brightness_ += step_;
-    SetBrightnessImpl(brightness_);
+    int next = brightness_ + step_;
+    if ((step_ > 0 && next >= target_brightness_) || (step_ < 0 && next <= target_brightness_)) {
+        next = target_brightness_;                  // steps can be larger than 1: do not overshoot
+    }
+    brightness_ = static_cast<uint8_t>(next);
+    if (!blanked_) SetBrightnessImpl(brightness_);
 
     if (brightness_ == target_brightness_) {
         esp_timer_stop(transition_timer_);

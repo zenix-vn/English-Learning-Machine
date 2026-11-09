@@ -1,0 +1,235 @@
+# Starter vocabulary built into the firmware (works with no network and no server pack).
+# Columns: word <TAB> IPA <TAB> Vietnamese meaning <TAB> example "English — Vietnamese"
+# Lines starting with # are comments. Words must be lowercase. Run scripts/gen_starter_pack.py after editing.
+cat	/kæt/	con mèo	The cat is sleeping on the sofa. — Con mèo đang ngủ trên ghế sofa.
+dog	/dɔːɡ/	con chó	My dog likes to run in the park. — Con chó của tôi thích chạy trong công viên.
+bird	/bɜːrd/	con chim	A bird is singing in the tree. — Một con chim đang hót trên cây.
+fish	/fɪʃ/	con cá	The fish swims in the water. — Con cá bơi trong nước.
+horse	/hɔːrs/	con ngựa	The horse runs very fast. — Con ngựa chạy rất nhanh.
+cow	/kaʊ/	con bò	The cow gives us milk. — Con bò cho chúng ta sữa.
+pig	/pɪɡ/	con lợn	The pig is pink and fat. — Con lợn màu hồng và mập.
+duck	/dʌk/	con vịt	The duck swims in the pond. — Con vịt bơi trong ao.
+chicken	/ˈtʃɪkɪn/	con gà	The chicken lays an egg every day. — Con gà đẻ một quả trứng mỗi ngày.
+rabbit	/ˈræbɪt/	con thỏ	The rabbit eats a carrot. — Con thỏ ăn một củ cà rốt.
+mouse	/maʊs/	con chuột	The mouse is hiding in the box. — Con chuột đang trốn trong cái hộp.
+elephant	/ˈelɪfənt/	con voi	The elephant has a long nose. — Con voi có cái mũi dài.
+monkey	/ˈmʌŋki/	con khỉ	The monkey likes bananas. — Con khỉ thích chuối.
+tiger	/ˈtaɪɡər/	con hổ	The tiger is big and strong. — Con hổ to và khỏe.
+lion	/ˈlaɪən/	con sư tử	The lion is the king of animals. — Sư tử là vua của các loài thú.
+bear	/ber/	con gấu	The bear sleeps in winter. — Con gấu ngủ vào mùa đông.
+frog	/frɔːɡ/	con ếch	The frog jumps into the water. — Con ếch nhảy xuống nước.
+butterfly	/ˈbʌtərflaɪ/	con bướm	A butterfly is on the flower. — Một con bướm đậu trên bông hoa.
+red	/red/	màu đỏ	She wears a red dress. — Cô ấy mặc một chiếc váy đỏ.
+blue	/bluː/	màu xanh dương	The sky is blue. — Bầu trời màu xanh dương.
+green	/ɡriːn/	màu xanh lá	The grass is green. — Cỏ có màu xanh lá.
+yellow	/ˈjeloʊ/	màu vàng	The sun is yellow. — Mặt trời màu vàng.
+black	/blæk/	màu đen	I have a black bag. — Tôi có một chiếc cặp màu đen.
+white	/waɪt/	màu trắng	Snow is white. — Tuyết màu trắng.
+orange	/ˈɔːrɪndʒ/	màu cam; quả cam	I eat an orange every morning. — Tôi ăn một quả cam mỗi sáng.
+pink	/pɪŋk/	màu hồng	She has a pink ribbon. — Cô ấy có một chiếc nơ màu hồng.
+purple	/ˈpɜːrpl/	màu tím	The grapes are purple. — Những quả nho màu tím.
+brown	/braʊn/	màu nâu	The bear is brown. — Con gấu màu nâu.
+mother	/ˈmʌðər/	mẹ	My mother cooks dinner. — Mẹ tôi nấu bữa tối.
+father	/ˈfɑːðər/	bố, cha	My father drives a car. — Bố tôi lái xe ô tô.
+brother	/ˈbrʌðər/	anh trai, em trai	My brother plays football. — Anh trai tôi chơi bóng đá.
+sister	/ˈsɪstər/	chị gái, em gái	My sister reads a book. — Chị gái tôi đọc sách.
+grandmother	/ˈɡrænmʌðər/	bà	My grandmother tells me stories. — Bà kể chuyện cho tôi nghe.
+grandfather	/ˈɡrænfɑːðər/	ông	My grandfather has a garden. — Ông tôi có một khu vườn.
+baby	/ˈbeɪbi/	em bé	The baby is smiling. — Em bé đang mỉm cười.
+family	/ˈfæməli/	gia đình	I love my family. — Tôi yêu gia đình của mình.
+friend	/frend/	người bạn	She is my best friend. — Cô ấy là bạn thân nhất của tôi.
+boy	/bɔɪ/	cậu bé	The boy is playing with a ball. — Cậu bé đang chơi với quả bóng.
+girl	/ɡɜːrl/	cô bé	The girl is drawing a picture. — Cô bé đang vẽ một bức tranh.
+teacher	/ˈtiːtʃər/	giáo viên	The teacher is very kind. — Cô giáo rất tốt bụng.
+student	/ˈstuːdnt/	học sinh	Every student has a book. — Mỗi học sinh có một quyển sách.
+doctor	/ˈdɑːktər/	bác sĩ	The doctor helps sick people. — Bác sĩ giúp đỡ những người bị ốm.
+head	/hed/	cái đầu	He has a hat on his head. — Cậu ấy đội mũ trên đầu.
+eye	/aɪ/	con mắt	I close my eyes to sleep. — Tôi nhắm mắt để ngủ.
+ear	/ɪr/	cái tai	I hear with my ears. — Tôi nghe bằng đôi tai.
+nose	/noʊz/	cái mũi	I smell flowers with my nose. — Tôi ngửi hoa bằng mũi.
+mouth	/maʊθ/	cái miệng	Open your mouth, please. — Làm ơn há miệng ra.
+hand	/hænd/	bàn tay	Wash your hands before eating. — Hãy rửa tay trước khi ăn.
+foot	/fʊt/	bàn chân	My foot hurts. — Chân tôi bị đau.
+arm	/ɑːrm/	cánh tay	He raises his arm. — Cậu ấy giơ cánh tay lên.
+leg	/leɡ/	cái chân	The table has four legs. — Cái bàn có bốn chân.
+hair	/her/	mái tóc	She has long black hair. — Cô ấy có mái tóc đen dài.
+face	/feɪs/	khuôn mặt	Wash your face every morning. — Hãy rửa mặt mỗi buổi sáng.
+tooth	/tuːθ/	cái răng	I brush my teeth twice a day. — Tôi đánh răng hai lần một ngày.
+apple	/ˈæpl/	quả táo	An apple a day is good for you. — Mỗi ngày một quả táo rất tốt cho bạn.
+banana	/bəˈnænə/	quả chuối	The monkey eats a banana. — Con khỉ ăn một quả chuối.
+bread	/bred/	bánh mì	I have bread for breakfast. — Tôi ăn bánh mì vào bữa sáng.
+rice	/raɪs/	cơm, gạo	We eat rice every day. — Chúng tôi ăn cơm mỗi ngày.
+milk	/mɪlk/	sữa	Drink your milk, please. — Làm ơn uống sữa của con.
+water	/ˈwɔːtər/	nước	I drink water when I am thirsty. — Tôi uống nước khi khát.
+egg	/eɡ/	quả trứng	I eat an egg for breakfast. — Tôi ăn một quả trứng vào bữa sáng.
+meat	/miːt/	thịt	We have meat for dinner. — Chúng tôi ăn thịt vào bữa tối.
+juice	/dʒuːs/	nước ép	I like orange juice. — Tôi thích nước ép cam.
+cake	/keɪk/	bánh ngọt	We eat cake on my birthday. — Chúng tôi ăn bánh vào sinh nhật tôi.
+candy	/ˈkændi/	kẹo	Too much candy is bad for your teeth. — Ăn quá nhiều kẹo có hại cho răng.
+soup	/suːp/	món súp, canh	The soup is hot. — Món súp còn nóng.
+tomato	/təˈmeɪtoʊ/	quả cà chua	A tomato is red. — Quả cà chua màu đỏ.
+carrot	/ˈkærət/	củ cà rốt	Rabbits love carrots. — Thỏ rất thích cà rốt.
+potato	/pəˈteɪtoʊ/	củ khoai tây	I like fried potatoes. — Tôi thích khoai tây chiên.
+grape	/ɡreɪp/	quả nho	These grapes are sweet. — Những quả nho này rất ngọt.
+strawberry	/ˈstrɔːberi/	quả dâu tây	I love strawberry ice cream. — Tôi yêu kem dâu tây.
+one	/wʌn/	số một	I have one brother. — Tôi có một người anh trai.
+two	/tuː/	số hai	She has two cats. — Cô ấy có hai con mèo.
+three	/θriː/	số ba	There are three apples. — Có ba quả táo.
+four	/fɔːr/	số bốn	A table has four legs. — Cái bàn có bốn chân.
+five	/faɪv/	số năm	I have five fingers on each hand. — Tôi có năm ngón tay trên mỗi bàn tay.
+six	/sɪks/	số sáu	It is six o'clock. — Bây giờ là sáu giờ.
+seven	/ˈsevn/	số bảy	There are seven days in a week. — Một tuần có bảy ngày.
+eight	/eɪt/	số tám	He is eight years old. — Cậu ấy tám tuổi.
+nine	/naɪn/	số chín	School starts at nine. — Trường học bắt đầu lúc chín giờ.
+ten	/ten/	số mười	Count from one to ten. — Hãy đếm từ một đến mười.
+book	/bʊk/	quyển sách	I read a book every night. — Tôi đọc một quyển sách mỗi tối.
+pen	/pen/	cái bút	Can I borrow your pen? — Tôi mượn bút của bạn được không?
+pencil	/ˈpensl/	bút chì	I draw with a pencil. — Tôi vẽ bằng bút chì.
+bag	/bæɡ/	cái cặp, túi	My bag is very heavy. — Cặp của tôi rất nặng.
+desk	/desk/	cái bàn học	Please sit at your desk. — Hãy ngồi vào bàn học của em.
+chair	/tʃer/	cái ghế	Sit on the chair. — Hãy ngồi lên cái ghế.
+table	/ˈteɪbl/	cái bàn	The food is on the table. — Thức ăn ở trên bàn.
+door	/dɔːr/	cánh cửa	Please close the door. — Làm ơn đóng cửa lại.
+window	/ˈwɪndoʊ/	cửa sổ	Open the window, please. — Làm ơn mở cửa sổ ra.
+school	/skuːl/	trường học	I go to school by bike. — Tôi đi học bằng xe đạp.
+class	/klæs/	lớp học	Our class starts at eight. — Lớp chúng tôi bắt đầu lúc tám giờ.
+paper	/ˈpeɪpər/	tờ giấy	I need a piece of paper. — Tôi cần một tờ giấy.
+ball	/bɔːl/	quả bóng	The boy kicks the ball. — Cậu bé đá quả bóng.
+toy	/tɔɪ/	đồ chơi	She has many toys. — Cô bé có nhiều đồ chơi.
+game	/ɡeɪm/	trò chơi	Let's play a game. — Chúng ta cùng chơi một trò chơi nhé.
+music	/ˈmjuːzɪk/	âm nhạc	I like to listen to music. — Tôi thích nghe nhạc.
+song	/sɔːŋ/	bài hát	She sings a beautiful song. — Cô ấy hát một bài hát hay.
+picture	/ˈpɪktʃər/	bức tranh, bức ảnh	He draws a picture of his house. — Cậu ấy vẽ một bức tranh về ngôi nhà.
+house	/haʊs/	ngôi nhà	We live in a small house. — Chúng tôi sống trong một ngôi nhà nhỏ.
+room	/ruːm/	căn phòng	My room is on the second floor. — Phòng của tôi ở tầng hai.
+bed	/bed/	cái giường	I go to bed at nine. — Tôi đi ngủ lúc chín giờ.
+kitchen	/ˈkɪtʃɪn/	nhà bếp	Mom is in the kitchen. — Mẹ đang ở trong bếp.
+garden	/ˈɡɑːrdn/	khu vườn	There are flowers in the garden. — Có hoa trong vườn.
+car	/kɑːr/	xe ô tô	Dad drives a red car. — Bố lái một chiếc ô tô màu đỏ.
+bus	/bʌs/	xe buýt	I take the bus to school. — Tôi đi xe buýt đến trường.
+bike	/baɪk/	xe đạp	I ride my bike in the park. — Tôi đạp xe trong công viên.
+train	/treɪn/	tàu hỏa	The train is very long. — Đoàn tàu rất dài.
+plane	/pleɪn/	máy bay	The plane flies in the sky. — Máy bay bay trên bầu trời.
+boat	/boʊt/	con thuyền	The boat is on the river. — Con thuyền ở trên sông.
+sun	/sʌn/	mặt trời	The sun is hot today. — Hôm nay mặt trời rất nóng.
+moon	/muːn/	mặt trăng	The moon is bright tonight. — Tối nay mặt trăng rất sáng.
+star	/stɑːr/	ngôi sao	I can see a star. — Tôi có thể nhìn thấy một ngôi sao.
+sky	/skaɪ/	bầu trời	The sky is blue today. — Hôm nay bầu trời xanh.
+rain	/reɪn/	cơn mưa; mưa	I don't like rain. — Tôi không thích trời mưa.
+snow	/snoʊ/	tuyết	Children play in the snow. — Trẻ em chơi trong tuyết.
+wind	/wɪnd/	cơn gió	The wind is strong today. — Hôm nay gió rất mạnh.
+cloud	/klaʊd/	đám mây	There is a big cloud in the sky. — Có một đám mây lớn trên trời.
+tree	/triː/	cái cây	A bird sits in the tree. — Một con chim đậu trên cây.
+flower	/ˈflaʊər/	bông hoa	She gives me a flower. — Cô ấy tặng tôi một bông hoa.
+river	/ˈrɪvər/	dòng sông	We swim in the river. — Chúng tôi bơi trên sông.
+sea	/siː/	biển	The sea is very big. — Biển rất rộng lớn.
+mountain	/ˈmaʊntn/	ngọn núi	We climb the mountain. — Chúng tôi leo lên ngọn núi.
+day	/deɪ/	ngày	Have a nice day! — Chúc bạn một ngày tốt lành!
+night	/naɪt/	ban đêm	The stars come out at night. — Các ngôi sao xuất hiện vào ban đêm.
+morning	/ˈmɔːrnɪŋ/	buổi sáng	I wake up early in the morning. — Tôi dậy sớm vào buổi sáng.
+afternoon	/ˌæftərˈnuːn/	buổi chiều	We play in the afternoon. — Chúng tôi chơi vào buổi chiều.
+evening	/ˈiːvnɪŋ/	buổi tối	We eat dinner in the evening. — Chúng tôi ăn tối vào buổi tối.
+week	/wiːk/	tuần	There are seven days in a week. — Một tuần có bảy ngày.
+month	/mʌnθ/	tháng	There are twelve months in a year. — Một năm có mười hai tháng.
+year	/jɪr/	năm	This year I am nine. — Năm nay tôi chín tuổi.
+time	/taɪm/	thời gian, giờ	What time is it? — Bây giờ là mấy giờ?
+today	/təˈdeɪ/	hôm nay	Today is Monday. — Hôm nay là thứ Hai.
+tomorrow	/təˈmɑːroʊ/	ngày mai	See you tomorrow! — Hẹn gặp lại ngày mai!
+yesterday	/ˈjestərdeɪ/	hôm qua	I played football yesterday. — Hôm qua tôi đã chơi bóng đá.
+go	/ɡoʊ/	đi	Let's go to the park. — Chúng ta đi đến công viên nhé.
+come	/kʌm/	đến	Please come here. — Làm ơn đến đây.
+run	/rʌn/	chạy	I run in the park every morning. — Tôi chạy trong công viên mỗi sáng.
+walk	/wɔːk/	đi bộ	We walk to school. — Chúng tôi đi bộ đến trường.
+jump	/dʒʌmp/	nhảy	The frog can jump high. — Con ếch có thể nhảy cao.
+swim	/swɪm/	bơi	I like to swim in summer. — Tôi thích bơi vào mùa hè.
+fly	/flaɪ/	bay	Birds can fly. — Chim có thể bay.
+sit	/sɪt/	ngồi	Please sit down. — Làm ơn ngồi xuống.
+stand	/stænd/	đứng	Stand up, please. — Làm ơn đứng lên.
+eat	/iːt/	ăn	I eat breakfast at seven. — Tôi ăn sáng lúc bảy giờ.
+drink	/drɪŋk/	uống	I drink a glass of milk. — Tôi uống một cốc sữa.
+sleep	/sliːp/	ngủ	The baby is sleeping. — Em bé đang ngủ.
+wake	/weɪk/	thức dậy	I wake up at six. — Tôi thức dậy lúc sáu giờ.
+play	/pleɪ/	chơi	The children play in the garden. — Bọn trẻ chơi trong vườn.
+read	/riːd/	đọc	I read a story every night. — Tôi đọc một câu chuyện mỗi tối.
+write	/raɪt/	viết	I write my name. — Tôi viết tên của mình.
+draw	/drɔː/	vẽ	She likes to draw animals. — Cô ấy thích vẽ các con vật.
+sing	/sɪŋ/	hát	We sing a song together. — Chúng tôi cùng hát một bài hát.
+dance	/dæns/	nhảy múa	They dance at the party. — Họ nhảy múa trong bữa tiệc.
+listen	/ˈlɪsn/	lắng nghe	Listen to the teacher. — Hãy lắng nghe cô giáo.
+look	/lʊk/	nhìn	Look at the bird! — Hãy nhìn con chim kìa!
+see	/siː/	nhìn thấy	I can see a rainbow. — Tôi nhìn thấy một chiếc cầu vồng.
+hear	/hɪr/	nghe thấy	I can hear music. — Tôi có thể nghe thấy tiếng nhạc.
+speak	/spiːk/	nói	She can speak English. — Cô ấy có thể nói tiếng Anh.
+say	/seɪ/	nói	What did you say? — Bạn vừa nói gì?
+ask	/æsk/	hỏi	Ask your teacher. — Hãy hỏi cô giáo của em.
+answer	/ˈænsər/	trả lời	Please answer the question. — Làm ơn trả lời câu hỏi.
+open	/ˈoʊpən/	mở	Open your book, please. — Làm ơn mở sách ra.
+close	/kloʊz/	đóng	Close the door, please. — Làm ơn đóng cửa lại.
+give	/ɡɪv/	cho, tặng	I give her a present. — Tôi tặng cô ấy một món quà.
+take	/teɪk/	lấy, cầm	Take your umbrella. — Hãy cầm theo ô của con.
+make	/meɪk/	làm	Mom makes a cake. — Mẹ làm một chiếc bánh.
+want	/wɑːnt/	muốn	I want some water. — Tôi muốn uống chút nước.
+like	/laɪk/	thích	I like ice cream. — Tôi thích kem.
+love	/lʌv/	yêu	I love my mom. — Con yêu mẹ.
+help	/help/	giúp đỡ	Can you help me? — Bạn giúp tôi được không?
+wash	/wɑːʃ/	rửa	Wash your hands. — Hãy rửa tay.
+cook	/kʊk/	nấu ăn	My dad can cook well. — Bố tôi nấu ăn rất giỏi.
+buy	/baɪ/	mua	I want to buy a toy. — Tôi muốn mua một món đồ chơi.
+think	/θɪŋk/	nghĩ	I think it is easy. — Tôi nghĩ việc này dễ.
+know	/noʊ/	biết	I know the answer. — Tôi biết câu trả lời.
+learn	/lɜːrn/	học	We learn English at school. — Chúng tôi học tiếng Anh ở trường.
+big	/bɪɡ/	to, lớn	An elephant is big. — Con voi rất to.
+small	/smɔːl/	nhỏ	The mouse is small. — Con chuột nhỏ bé.
+long	/lɔːŋ/	dài	The snake is very long. — Con rắn rất dài.
+short	/ʃɔːrt/	ngắn, thấp	She has short hair. — Cô ấy có mái tóc ngắn.
+tall	/tɔːl/	cao	My father is tall. — Bố tôi cao.
+hot	/hɑːt/	nóng	The soup is hot. — Món súp còn nóng.
+cold	/koʊld/	lạnh	It is cold in winter. — Trời lạnh vào mùa đông.
+good	/ɡʊd/	tốt, giỏi	You are a good student. — Em là một học sinh giỏi.
+bad	/bæd/	xấu, tệ	The weather is bad today. — Hôm nay thời tiết xấu.
+happy	/ˈhæpi/	vui vẻ, hạnh phúc	I am happy today. — Hôm nay tôi rất vui.
+sad	/sæd/	buồn	The boy is sad. — Cậu bé đang buồn.
+angry	/ˈæŋɡri/	tức giận	Dad is angry. — Bố đang tức giận.
+tired	/ˈtaɪərd/	mệt mỏi	I am tired. — Tôi mệt rồi.
+hungry	/ˈhʌŋɡri/	đói	I am hungry. — Tôi đói rồi.
+thirsty	/ˈθɜːrsti/	khát	I am thirsty. Can I have water? — Tôi khát. Cho tôi xin nước được không?
+new	/nuː/	mới	I have a new bag. — Tôi có một chiếc cặp mới.
+old	/oʊld/	cũ, già	My grandfather is old. — Ông tôi đã già.
+young	/jʌŋ/	trẻ	The baby is very young. — Em bé còn rất nhỏ.
+fast	/fæst/	nhanh	The car is very fast. — Chiếc xe chạy rất nhanh.
+slow	/sloʊ/	chậm	The turtle is slow. — Con rùa rất chậm.
+easy	/ˈiːzi/	dễ	This game is easy. — Trò chơi này dễ.
+hard	/hɑːrd/	khó; cứng	The test is hard. — Bài kiểm tra này khó.
+clean	/kliːn/	sạch	My room is clean. — Phòng của tôi sạch sẽ.
+dirty	/ˈdɜːrti/	bẩn	My shoes are dirty. — Giày của tôi bị bẩn.
+beautiful	/ˈbjuːtɪfl/	đẹp	The flower is beautiful. — Bông hoa thật đẹp.
+funny	/ˈfʌni/	vui nhộn, hài hước	The clown is funny. — Chú hề rất vui nhộn.
+kind	/kaɪnd/	tốt bụng	Our teacher is kind. — Cô giáo của chúng tôi rất tốt bụng.
+quiet	/ˈkwaɪət/	yên lặng	Please be quiet. — Làm ơn giữ yên lặng.
+loud	/laʊd/	to, ồn ào	The music is too loud. — Nhạc to quá.
+heavy	/ˈhevi/	nặng	The box is heavy. — Cái hộp này nặng.
+light	/laɪt/	nhẹ; ánh sáng	The bag is light. — Chiếc cặp này nhẹ.
+full	/fʊl/	đầy; no	The glass is full. — Cái cốc đầy nước.
+empty	/ˈempti/	trống rỗng	The box is empty. — Cái hộp trống rỗng.
+up	/ʌp/	lên, phía trên	Look up at the sky. — Hãy nhìn lên bầu trời.
+down	/daʊn/	xuống, phía dưới	Sit down, please. — Làm ơn ngồi xuống.
+in	/ɪn/	ở trong	The book is in my bag. — Quyển sách ở trong cặp của tôi.
+on	/ɑːn/	ở trên	The cat is on the sofa. — Con mèo ở trên ghế sofa.
+under	/ˈʌndər/	ở dưới	The ball is under the table. — Quả bóng ở dưới gầm bàn.
+big	/bɪɡ/	to, lớn	A whale is very big. — Cá voi rất to.
+here	/hɪr/	ở đây	Come here, please. — Làm ơn lại đây.
+there	/ðer/	ở đó	The park is over there. — Công viên ở đằng kia.
+yes	/jes/	vâng, có	Yes, I can. — Vâng, tôi làm được.
+no	/noʊ/	không	No, thank you. — Không, cảm ơn.
+please	/pliːz/	làm ơn, xin vui lòng	Please help me. — Làm ơn giúp tôi.
+thank	/θæŋk/	cảm ơn	Thank you very much. — Cảm ơn bạn rất nhiều.
+sorry	/ˈsɑːri/	xin lỗi	I am sorry. — Tôi xin lỗi.
+hello	/həˈloʊ/	xin chào	Hello, my name is Minh. — Xin chào, tên tôi là Minh.
+goodbye	/ˌɡʊdˈbaɪ/	tạm biệt	Goodbye! See you tomorrow. — Tạm biệt! Hẹn gặp ngày mai.
+name	/neɪm/	tên	My name is Lan. — Tên tôi là Lan.
+what	/wɑːt/	cái gì	What is this? — Đây là cái gì?
+where	/wer/	ở đâu	Where is my bag? — Cặp của tôi ở đâu?
+who	/huː/	ai	Who is that girl? — Cô bé kia là ai?
+how	/haʊ/	như thế nào	How are you? — Bạn khỏe không?
+why	/waɪ/	tại sao	Why are you sad? — Tại sao bạn buồn?
+when	/wen/	khi nào	When is your birthday? — Sinh nhật bạn là khi nào?

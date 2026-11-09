@@ -266,6 +266,130 @@ static void TestQueue() {
     CHECK(NextCard(empty, now, 0, 5).kind == PickKind::kNone);
 }
 
+// The two study programmes pick different cards, and the starter vocabulary built into the firmware is a valid pack.
+static void TestModesAndStarter() {
+    std::printf("modes and the starter pack\n");
+    const std::string dir = MakeTempDir();
+    Progress p;
+    CHECK(p.Open(dir, 1, 20));
+    const uint32_t now = 10'000'000;
+    // nothing studied: "new" offers new cards, "review" has nothing
+    Pick pick = NextCardFor(p, now, 0, 3, -1, Focus::kNew, false);
+    CHECK(pick.kind == PickKind::kNew && pick.card == 0);
+    CHECK(NextCardFor(p, now, 0, 3, -1, Focus::kReview, false).kind == PickKind::kNone);
+    CHECK(NextCardFor(p, now, 0, 3, -1, Focus::kReview, true).kind == PickKind::kNone);     // nothing is due soon either
+    // daily limit reached: "new" stops, unless the learner asks for more
+    CHECK(NextCardFor(p, now, 3, 3, -1, Focus::kNew, false).kind == PickKind::kNone);
+    CHECK(NextCardFor(p, now, 3, 3, -1, Focus::kNew, true).kind == PickKind::kNew);
+    // a reviewed card that is due shows in "review" only; one that is not due yet only as extra practice
+    p.Record(0, 4, now - 100000);
+    p.Mutable(0).due = now - 10;
+    p.Mutable(0).interval_min = 3 * 1440;
+    p.Record(1, 4, now);                                                                    // due in a day
+    pick = NextCardFor(p, now, 2, 3, -1, Focus::kReview, false);
+    CHECK(pick.kind == PickKind::kDue && pick.card == 0);
+    CHECK(NextCardFor(p, now, 2, 3, 0, Focus::kReview, false).kind == PickKind::kNone);      // avoid the one just answered
+    pick = NextCardFor(p, now, 2, 3, 0, Focus::kReview, true);
+    CHECK(pick.kind == PickKind::kExtra && pick.card == 1);
+    // a forgotten card (short relearning step) comes back in both programmes
+    p.Mutable(1).due = now - 5;
+    p.Mutable(1).interval_min = 10;
+    CHECK(NextCardFor(p, now, 3, 3, -1, Focus::kNew, false).kind == PickKind::kLearning);
+    CHECK(NextCardFor(p, now, 3, 3, -1, Focus::kReview, false).kind == PickKind::kLearning);
+
+    // starter pack: cards.bin / cards.idx written by scripts/gen_starter_pack.py
+    const std::string base = "../../main/offline/starter/";
+    const std::string pack_dir = MakeTempDir();
+    for (const char* name : {"cards.bin", "cards.idx"}) {
+        std::ifstream in(base + "starter_" + name, std::ios::binary);
+        std::ofstream out(pack_dir + "/" + name, std::ios::binary);
+        out << in.rdbuf();
+    }
+    std::ifstream idx(base + "starter_cards.idx", std::ios::binary);
+    std::string idx_bytes((std::istreambuf_iterator<char>(idx)), std::istreambuf_iterator<char>());
+    const size_t count = idx_bytes.size() / 4 - 1;
+    CHECK(count >= 200);
+    std::ofstream(pack_dir + "/audio.bin", std::ios::binary).close();
+    std::ofstream(pack_dir + "/audio.idx", std::ios::binary) << std::string(count * 8, '\0');
+    PackReader pack;
+    CHECK(pack.Open(pack_dir));
+    CHECK(pack.Count() == count);
+    std::vector<std::string> words;
+    CHECK(pack.ForEachWord([&](size_t i, const std::string& w) { CHECK(i == words.size()); words.push_back(w); }));
+    CHECK(words.size() == count);
+    Card c;
+    bool same = true, fields = true;
+    for (size_t i = 0; i < count; ++i) {
+        same &= pack.GetCard(i, c) && c.word == words[i];
+        fields &= !c.ipa.empty() && !c.meaning.empty() && !c.example.empty() && !pack.HasAudio(i);
+        std::string en, vi;
+        SplitExample(c.example, en, vi);
+        fields &= !en.empty() && !vi.empty() && ValidUtf8(c.meaning);
+        for (char ch : c.word) same &= (ch >= 'a' && ch <= 'z') || ch == '-' || ch == '\'';
+    }
+    CHECK(same);
+    CHECK(fields);
+
+    // the same pack served straight from memory, with the spoken clips
+    auto slurp = [](const std::string& path) {
+        std::ifstream in(path, std::ios::binary);
+        return std::string((std::istreambuf_iterator<char>(in)), std::istreambuf_iterator<char>());
+    };
+    const std::string cb = slurp(base + "starter_cards.bin"), ci = slurp(base + "starter_cards.idx"),
+                      ab = slurp(base + "starter_audio.bin"), ai = slurp(base + "starter_audio.idx");
+    PackReader mem;
+    CHECK(mem.OpenMemory(reinterpret_cast<const uint8_t*>(cb.data()), cb.size(),
+                         reinterpret_cast<const uint8_t*>(ci.data()), ci.size(),
+                         reinterpret_cast<const uint8_t*>(ab.data()), ab.size(),
+                         reinterpret_cast<const uint8_t*>(ai.data()), ai.size()));
+    CHECK(mem.Count() == count);
+    std::vector<std::string> mem_words;
+    CHECK(mem.ForEachWord([&](size_t, const std::string& w) { mem_words.push_back(w); }));
+    CHECK(mem_words == words);
+    bool audio_ok = true;
+    for (size_t i = 0; i < count; ++i) {
+        std::vector<uint8_t> clip;
+        audio_ok &= mem.HasAudio(i) && mem.ReadAudio(i, clip) && clip.size() > 100 && std::memcmp(clip.data(), "OggS", 4) == 0;
+        Card mc;
+        audio_ok &= mem.GetCard(i, mc) && mc.word == words[i];
+    }
+    CHECK(audio_ok);
+    CHECK(!mem.OpenMemory(reinterpret_cast<const uint8_t*>(cb.data()), cb.size() - 1,           // size must match the index
+                          reinterpret_cast<const uint8_t*>(ci.data()), ci.size(),
+                          reinterpret_cast<const uint8_t*>(ab.data()), ab.size(),
+                          reinterpret_cast<const uint8_t*>(ai.data()), ai.size()));
+}
+
+// Deferred reviews stay in RAM until Flush(), and the on-disk state then equals the in-memory state.
+static void TestDeferredWrites() {
+    std::printf("deferred writes\n");
+    const std::string dir = MakeTempDir();
+    const uint32_t now = 20'000'000;
+    Progress p;
+    CHECK(p.Open(dir, 7, 40));
+    for (int i = 0; i < 5; ++i) CHECK(p.Record(i, 4, now + i, true));
+    CHECK(p.Deferred() == 5 && FileSize(dir + "/events.log") <= 0);        // nothing written yet
+    Progress lost;                                                         // a power cut now loses the five reviews
+    CHECK(lost.Open(dir, 7, 40));
+    CHECK(lost.At(0).reps == 0 && lost.PendingUpload().empty());
+    CHECK(p.Flush());
+    CHECK(p.Deferred() == 0 && FileSize(dir + "/events.log") == 5 * 8);
+    Progress back;
+    CHECK(back.Open(dir, 7, 40));
+    bool same = back.PendingUpload().size() == 5;
+    for (size_t i = 0; i < 40; ++i) same &= std::memcmp(&p.At(i), &back.At(i), sizeof(CardState)) == 0;
+    CHECK(same);
+    // crossing the snapshot threshold while deferred, then Save(): journal and snapshot agree
+    for (int i = 0; i < 30; ++i) CHECK(p.Record(10 + i % 20, i % 3 == 0 ? 0 : 4, now + 100 + i, true));
+    CHECK(p.Save());
+    CHECK(p.Deferred() == 0);
+    Progress again;
+    CHECK(again.Open(dir, 7, 40));
+    same = again.PendingUpload().size() == 35;
+    for (size_t i = 0; i < 40; ++i) same &= std::memcmp(&p.At(i), &again.At(i), sizeof(CardState)) == 0;
+    CHECK(same);
+}
+
 int main(int argc, char** argv) {
     if (argc < 3) { std::printf("usage: %s <pack_dir> <sm2_cases.txt>\n", argv[0]); return 2; }
     TestText();
@@ -274,6 +398,8 @@ int main(int argc, char** argv) {
     TestPack(argv[1]);
     TestProgress();
     TestQueue();
+    TestModesAndStarter();
+    TestDeferredWrites();
     std::printf("\n%d checks, %d failed\n", g_checks, g_failed);
     return g_failed ? 1 : 0;
 }

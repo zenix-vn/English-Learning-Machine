@@ -11,6 +11,9 @@
 #include "system_info.h"
 #include "text_glyph_payload.h"
 #include "websocket_protocol.h"
+#if CONFIG_BOARD_TYPE_ENGLISH_LEARNER
+#include "home/home_screen.h"
+#endif
 #if CONFIG_EL_OFFLINE_STUDY
 #include "offline/study.h"
 #endif
@@ -73,6 +76,9 @@ void Application::Initialize() {
     // Setup the display
     auto display = board.GetDisplay();
     display->SetupUI();
+#if CONFIG_BOARD_TYPE_ENGLISH_LEARNER
+    home::HomeScreen::GetInstance().Build();    // hidden until the device is idle
+#endif
     // Print board name/version info
     display->SetChatMessage("system", SystemInfo::GetUserAgent().c_str());
 
@@ -770,6 +776,9 @@ void Application::ShowActivationCode(const std::string& code, const std::string&
          digit_sound{'6', Lang::Sounds::OGG_6}, digit_sound{'7', Lang::Sounds::OGG_7},
          digit_sound{'8', Lang::Sounds::OGG_8}, digit_sound{'9', Lang::Sounds::OGG_9}}};
 
+#if CONFIG_BOARD_TYPE_ENGLISH_LEARNER
+    home::HomeScreen::GetInstance().ShowActivation(code);     // the code on screen, lit digit by digit as it is read
+#endif
     // This sentence uses 9KB of SRAM, so we need to wait for it to finish
     Alert(Lang::Strings::ACTIVATION, message.c_str(), "link", Lang::Sounds::OGG_ACTIVATION);
 
@@ -1363,6 +1372,50 @@ bool Application::UpgradeFirmware(const std::string& url, const std::string& ver
         Reboot();
         return true;
     }
+}
+
+void Application::InvokeText(const std::string& text) {
+    Schedule([this, text]() {
+        if (!protocol_ || GetDeviceState() != kDeviceStateIdle) {
+            return;
+        }
+        if (!SetDeviceState(kDeviceStateConnecting)) {
+            return;
+        }
+        // Let the state change reach the UI before OpenAudioChannel blocks the main task
+        Schedule([this, text]() { ContinueInvokeText(text); });
+    });
+}
+
+void Application::ContinueInvokeText(const std::string& text) {
+    if (GetDeviceState() != kDeviceStateConnecting) {
+        return;
+    }
+    Board::GetInstance().SetPowerSaveLevel(PowerSaveLevel::PERFORMANCE);
+    if (!protocol_->IsAudioChannelOpened() && !protocol_->OpenAudioChannel()) {
+        SetDeviceState(kDeviceStateIdle);
+        return;
+    }
+    ESP_LOGI(TAG, "Text request: %s", text.c_str());
+    // Sending "listen start" now would make the server abort the reply it is preparing, so only set
+    // the mode: the device starts listening after the reply ("tts stop"). Connecting cannot go
+    // straight to speaking, so wait in idle for the server's "tts start".
+    listening_mode_ = GetDefaultListeningMode();
+    protocol_->SendWakeWordDetected(text);
+    SetDeviceState(kDeviceStateIdle);
+}
+
+void Application::EndConversation() {
+    Schedule([this]() {
+        if (GetDeviceState() == kDeviceStateSpeaking) {
+            AbortSpeaking(kAbortReasonNone);
+        }
+        if (protocol_ && protocol_->IsAudioChannelOpened()) {
+            protocol_->CloseAudioChannel();     // the channel-closed callback sets idle
+        } else if (GetDeviceState() != kDeviceStateIdle) {
+            SetDeviceState(kDeviceStateIdle);
+        }
+    });
 }
 
 void Application::WakeWordInvoke(const std::string& wake_word) {

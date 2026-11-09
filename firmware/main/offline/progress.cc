@@ -99,26 +99,34 @@ uint32_t Progress::NewToday(uint32_t now) {
     return new_count_;
 }
 
-bool Progress::Record(size_t card, int quality, uint32_t now) {
+bool Progress::Record(size_t card, int quality, uint32_t now, bool defer) {
     if (card >= cards_.size() || card > 0xFFFF) return false;
     NewToday(now);
     if (!(cards_[card].flags & kSeen)) new_count_++;
     Grade(cards_[card], quality, now);
     last_time_ = now;
+    pending_.push_back(ReviewEvent{static_cast<uint16_t>(card), static_cast<uint8_t>(quality), 0, now});
+    return defer ? true : Flush();
+}
 
-    ReviewEvent e{static_cast<uint16_t>(card), static_cast<uint8_t>(quality), 0, now};
+bool Progress::Flush() {
+    if (pending_.empty()) return true;
     FILE* f = std::fopen(journal_path().c_str(), "ab");
     if (!f) return false;
-    bool ok = WriteAll(f, &e, sizeof e) && std::fflush(f) == 0;
+    bool ok = WriteAll(f, pending_.data(), pending_.size() * sizeof(ReviewEvent)) && std::fflush(f) == 0;
     std::fclose(f);
     if (!ok) return false;
-    journal_count_++;
+    const uint32_t n = static_cast<uint32_t>(pending_.size());
+    pending_.clear();
+    journal_count_ += n;
     applied_ = journal_count_;
-    if (++since_snapshot_ >= kSnapshotEvery) return Save();
+    since_snapshot_ += n;
+    if (since_snapshot_ >= kSnapshotEvery) return Save();
     return true;
 }
 
 bool Progress::Save() {
+    if (!pending_.empty() && !Flush()) return false;     // the snapshot must not run ahead of the journal
     const std::string path = snapshot_path(), tmp = path + ".tmp";
     FILE* f = std::fopen(tmp.c_str(), "wb");
     if (!f) return false;

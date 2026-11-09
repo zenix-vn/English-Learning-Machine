@@ -4,6 +4,7 @@
 #include <esp_log.h>
 #include <esp_vfs_fat.h>
 #include <sys/stat.h>
+#include <unistd.h>
 
 #include <cstdio>
 

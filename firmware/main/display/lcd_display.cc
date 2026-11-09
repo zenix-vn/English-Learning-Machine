@@ -7,6 +7,8 @@
 #include <esp_err.h>
 #include <esp_heap_caps.h>
 #include <esp_log.h>
+#include <esp_lcd_panel_rgb.h>
+#include <esp_rom_sys.h>
 #include <esp_lvgl_port.h>
 #include <esp_psram.h>
 #include <material_symbols.h>
@@ -212,6 +214,54 @@ SpiLcdDisplay::SpiLcdDisplay(esp_lcd_panel_io_handle_t panel_io, esp_lcd_panel_h
     }
 }
 
+#if CONFIG_BOARD_TYPE_ENGLISH_LEARNER
+// Copies a finished strip into the RGB panel's frame buffer in small bursts. The panel refills its two small bounce
+// buffers (10 lines each, about 0.28 ms of scanning) from the same PSRAM, so one long burst of CPU writes starves it
+// and shows as a stripe. A few lines at a time with a short pause lets the refill interrupt keep up.
+//
+// While a page is being prepared (LcdPageBegin) the strips go to the hidden frame buffer instead.
+static esp_lcd_panel_handle_t s_rgb_panel = nullptr;
+static uint8_t* s_fb[2] = {nullptr, nullptr};
+static int s_front = 0;                 // index of the frame buffer that is displayed
+static bool s_offscreen = false;
+static int s_hres = 0;
+
+static void PacedRgbFlush(lv_display_t* disp, const lv_area_t* area, uint8_t* px_map) {
+    constexpr int kBurstLines = 4;
+    constexpr uint32_t kPauseUs = 120;
+    const size_t line_bytes = static_cast<size_t>(area->x2 - area->x1 + 1) * 2;      // RGB565
+    for (int y = area->y1; y <= area->y2; y += kBurstLines) {
+        const int y_end = std::min(y + kBurstLines - 1, static_cast<int>(area->y2));
+        const uint8_t* src = px_map + static_cast<size_t>(y - area->y1) * line_bytes;
+        if (s_offscreen) {
+            uint8_t* back = s_fb[1 - s_front];
+            for (int row = y; row <= y_end; ++row) {
+                std::memcpy(back + (static_cast<size_t>(row) * s_hres + area->x1) * 2,
+                            src + static_cast<size_t>(row - y) * line_bytes, line_bytes);
+            }
+        } else {
+            esp_lcd_panel_draw_bitmap(s_rgb_panel, area->x1, y, area->x2 + 1, y_end + 1, src);
+        }
+        esp_rom_delay_us(kPauseUs);
+    }
+    lv_display_flush_ready(disp);
+}
+
+void LcdPageBegin() { s_offscreen = s_fb[0] && s_fb[1]; }
+
+void LcdPageFlip() {
+    if (!s_offscreen) return;
+    s_offscreen = false;
+    const int back = 1 - s_front;
+    // a draw buffer that is one of the frame buffers makes the driver display it (bounce mode: from the next frame)
+    esp_lcd_panel_draw_bitmap(s_rgb_panel, 0, 0, s_hres, 1, s_fb[back]);
+    s_front = back;
+}
+#else
+void LcdPageBegin() {}
+void LcdPageFlip() {}
+#endif
+
 // RGB LCD implementation
 RgbLcdDisplay::RgbLcdDisplay(esp_lcd_panel_io_handle_t panel_io, esp_lcd_panel_handle_t panel,
                              int width, int height, int offset_x, int offset_y, bool mirror_x,
@@ -230,9 +280,47 @@ RgbLcdDisplay::RgbLcdDisplay(esp_lcd_panel_io_handle_t panel_io, esp_lcd_panel_h
     lvgl_port_cfg_t port_cfg = ESP_LVGL_PORT_INIT_CONFIG();
     port_cfg.task_priority = 1;
     port_cfg.timer_period_ms = 50;
+#if CONFIG_BOARD_TYPE_ENGLISH_LEARNER
+    // Page switches draw a whole page from inside an LVGL timer (ui::SwitchPage); the default 7 KB overflowed.
+    port_cfg.task_stack = 12288;
+#endif
     lvgl_port_init(&port_cfg);
 
     ESP_LOGI(TAG, "Adding LCD display");
+#if CONFIG_BOARD_TYPE_ENGLISH_LEARNER
+    // LVGL draws into one small buffer in internal RAM and the finished strips are copied into the panel's frame
+    // buffer in PSRAM. Drawing straight into a PSRAM frame buffer (the "avoid tearing" modes below) makes LVGL read and
+    // write PSRAM for every blended pixel (gradients, rounded corners, translucent circles) while the LCD DMA reads
+    // the same PSRAM, and the panel shows noise and stripes for as long as the drawing lasts. This way PSRAM only
+    // sees one sequential copy per strip. The cost is that a large change can show a thin tear line for a moment.
+    // No rotation is passed: the RGB driver would rotate every strip itself, but this panel is already upright.
+    const lvgl_port_display_cfg_t display_cfg = {
+        .io_handle = panel_io_,
+        .panel_handle = panel_,
+        .buffer_size = static_cast<uint32_t>(width_ * 16),
+        .double_buffer = false,
+        .hres = static_cast<uint32_t>(width_),
+        .vres = static_cast<uint32_t>(height_),
+        .rotation =
+            {
+                .swap_xy = false,
+                .mirror_x = false,
+                .mirror_y = false,
+            },
+        .flags =
+            {
+                .buff_dma = 1,
+                .swap_bytes = 0,
+                .full_refresh = 0,
+                .direct_mode = 0,
+            },
+    };
+
+    const lvgl_port_display_rgb_cfg_t rgb_cfg = {.flags = {
+                                                     .bb_mode = true,
+                                                     .avoid_tearing = false,
+                                                 }};
+#else
     const lvgl_port_display_cfg_t display_cfg = {
         .io_handle = panel_io_,
         .panel_handle = panel_,
@@ -259,6 +347,7 @@ RgbLcdDisplay::RgbLcdDisplay(esp_lcd_panel_io_handle_t panel_io, esp_lcd_panel_h
                                                      .bb_mode = true,
                                                      .avoid_tearing = true,
                                                  }};
+#endif
 
     display_ = lvgl_port_add_disp_rgb(&display_cfg, &rgb_cfg);
     if (display_ == nullptr) {
@@ -269,6 +358,21 @@ RgbLcdDisplay::RgbLcdDisplay(esp_lcd_panel_io_handle_t panel_io, esp_lcd_panel_h
     if (offset_x != 0 || offset_y != 0) {
         lv_display_set_offset(display_, offset_x, offset_y);
     }
+
+#if CONFIG_BOARD_TYPE_ENGLISH_LEARNER
+    s_rgb_panel = panel_;
+    s_hres = width_;
+    void* fb0 = nullptr;
+    void* fb1 = nullptr;
+    if (esp_lcd_rgb_panel_get_frame_buffer(panel_, 2, &fb0, &fb1) == ESP_OK) {
+        s_fb[0] = static_cast<uint8_t*>(fb0);
+        s_fb[1] = static_cast<uint8_t*>(fb1);
+        s_front = 0;
+    }
+    lvgl_port_lock(0);
+    lv_display_set_flush_cb(display_, PacedRgbFlush);
+    lvgl_port_unlock();
+#endif
 }
 
 MipiLcdDisplay::MipiLcdDisplay(esp_lcd_panel_io_handle_t panel_io, esp_lcd_panel_handle_t panel,

@@ -2,6 +2,9 @@
 
 #include "display.h"
 #include "application.h"
+#if CONFIG_BOARD_TYPE_ENGLISH_LEARNER
+#include "home/home_screen.h"
+#endif
 #include "system_info.h"
 #include "settings.h"
 #include "assets/lang_config.h"
@@ -54,10 +57,10 @@ void WifiBoard::StartNetwork() {
 
     // Initialize WiFi manager
     WifiManagerConfig config;
-    config.ssid_prefix = "EnglishLearner";
+    config.ssid_prefix = "Sophia";
     config.language = Lang::CODE;
-    config.show_ota_config = true;
-    config.show_sleep_config = true;
+    config.show_ota_config = false;         // keep the phone page simple: only the Wi-Fi list and the password
+    config.show_sleep_config = false;
 
     // Set a DHCP hostname so the router shows a friendly name instead of "espressif".
     // Uses the same "<prefix>-<last 2 MAC bytes>" scheme as the config AP SSID.
@@ -183,6 +186,9 @@ void WifiBoard::StartWifiConfigMode() {
         hint += Lang::Strings::ACCESS_VIA_BROWSER;
         hint += wifi_manager.GetApWebUrl();
 
+#if CONFIG_BOARD_TYPE_ENGLISH_LEARNER
+        home::HomeScreen::GetInstance().ShowWifiSetup(wifi_manager.GetApSsid(), wifi_manager.GetApWebUrl());
+#endif
         Application::GetInstance().Alert(Lang::Strings::WIFI_CONFIG_MODE, hint.c_str(), "gear", Lang::Sounds::OGG_WIFICONFIG);
     });
 #elif CONFIG_USE_ESP_BLUFI_WIFI_PROVISIONING

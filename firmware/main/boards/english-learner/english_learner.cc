@@ -6,6 +6,7 @@
 #include "pin_config.h"
 
 #include "config.h"
+#include "home/home_screen.h"
 #if CONFIG_EL_OFFLINE_STUDY
 #include "offline/study.h"
 #endif
@@ -18,6 +19,20 @@
 #include <esp_lcd_panel_io_additions.h>
 
 #define TAG "EnglishLearner"
+
+// Forwards the conversation text to the home module, which draws the chat screen with the mascot.
+class ElDisplay : public RgbLcdDisplay {
+public:
+    using RgbLcdDisplay::RgbLcdDisplay;
+    void SetChatMessage(const char* role, const char* content) override {
+        RgbLcdDisplay::SetChatMessage(role, content);
+        home::HomeScreen::GetInstance().SetChatText(role, content);
+    }
+    void ClearChatMessages() override {
+        RgbLcdDisplay::ClearChatMessages();
+        home::HomeScreen::GetInstance().ClearChatText();
+    }
+};
 
 class EnglishLearner : public WifiBoard {
 private:
@@ -100,7 +115,7 @@ private:
         (esp_lcd_panel_reset(panel_handle));
         (esp_lcd_panel_init(panel_handle));
 
-        display_ = new RgbLcdDisplay(panel_io, panel_handle,
+        display_ = new ElDisplay(panel_io, panel_handle,
                                   DISPLAY_WIDTH, DISPLAY_HEIGHT, DISPLAY_OFFSET_X, DISPLAY_OFFSET_Y, DISPLAY_MIRROR_X,
                                   DISPLAY_MIRROR_Y, DISPLAY_SWAP_XY);
     }
@@ -122,26 +137,37 @@ private:
         ESP_ERROR_CHECK(i2c_new_master_bus(&i2c_bus_cfg, &codec_i2c_bus_));
     }
 
+    // One button for everything. Priority: offline flashcards, then the home screen (click = next tile,
+    // double click = previous tile or end the conversation, hold = open), then the start-up actions.
+    // There is no push-to-talk: in a conversation a click starts or stops talking.
     void InitializeButtons() {
-#if CONFIG_EL_OFFLINE_STUDY
-        // While the offline study mode is on, the Boot button only drives the flashcards.
         boot_button_.OnDoubleClick([this]() {
+#if CONFIG_EL_OFFLINE_STUDY
             auto& study = offline::OfflineStudy::GetInstance();
             if (study.Active()) {
                 study.Post(offline::Gesture::kDouble);
                 return;
             }
+#endif
+            if (home::HomeScreen::GetInstance().OnDoubleClick()) return;
+#if CONFIG_EL_OFFLINE_STUDY
             // Not connected yet (booting or waiting for Wi-Fi setup): a double click starts offline study.
             auto state = Application::GetInstance().GetDeviceState();
             if (state == kDeviceStateStarting || state == kDeviceStateWifiConfiguring) {
                 study.Start();
             }
+#endif
         });
         boot_button_.OnLongPress([this]() {
+#if CONFIG_EL_OFFLINE_STUDY
             auto& study = offline::OfflineStudy::GetInstance();
-            if (study.Active()) study.Post(offline::Gesture::kLong);
-        });
+            if (study.Active()) {
+                study.Post(offline::Gesture::kLong);
+                return;
+            }
 #endif
+            home::HomeScreen::GetInstance().OnLongPress();
+        });
         boot_button_.OnClick([this]() {
 #if CONFIG_EL_OFFLINE_STUDY
             if (offline::OfflineStudy::GetInstance().Active()) {
@@ -149,28 +175,16 @@ private:
                 return;
             }
 #endif
-            auto& app = Application::GetInstance();
-            if (app.GetDeviceState() == kDeviceStateStarting) {
+            if (home::HomeScreen::GetInstance().OnClick()) return;
+            if (Application::GetInstance().GetDeviceState() == kDeviceStateStarting) {
                 EnterWifiConfigMode();
-                return;
             }
-        });
-        boot_button_.OnPressDown([this]() {
-#if CONFIG_EL_OFFLINE_STUDY
-            if (offline::OfflineStudy::GetInstance().Active()) return;
-#endif
-            Application::GetInstance().StartListening();
-        });
-        boot_button_.OnPressUp([this]() {
-#if CONFIG_EL_OFFLINE_STUDY
-            if (offline::OfflineStudy::GetInstance().Active()) return;
-#endif
-            Application::GetInstance().StopListening();
         });
     }
 
 public:
-    EnglishLearner() : boot_button_(BOOT_BUTTON_GPIO) {
+    // 800 ms hold opens a tile: easier for children than the default 2 s
+    EnglishLearner() : boot_button_(BOOT_BUTTON_GPIO, false, 800) {
         InitializeCodecI2c();
         InitializeButtons();
         InitializeRGB_GC9503V_Display();

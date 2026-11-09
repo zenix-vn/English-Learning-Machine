@@ -18,3 +18,6 @@ main/mmap_generate_emoji.h
 *.bin
 mmap_generate_*.h
 .clangd
+
+# The built-in starter vocabulary is embedded in the firmware: these binaries are sources, not build output
+!main/offline/starter/*.bin
