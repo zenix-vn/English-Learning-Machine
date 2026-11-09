@@ -26,9 +26,11 @@ class LLM:
                      run_tool: Callable[[str, dict], Awaitable[str]]) -> AsyncIterator[str]:
         """Yield text deltas. Tool calls are executed and appended to `messages`."""
         for _ in range(MAX_TOOL_ROUNDS + 1):
-            kwargs = dict(model=self.model, messages=messages, tools=tools, stream=True,
+            kwargs = dict(model=self.model, messages=messages, stream=True,
                           stream_options={"include_usage": True},
                           temperature=self.temperature, max_tokens=self.max_tokens)
+            if tools:                       # an empty tools list is rejected by some providers
+                kwargs["tools"] = tools
             if self._openrouter:
                 kwargs["extra_body"] = {"reasoning": {"enabled": False}}
             text, calls = "", {}

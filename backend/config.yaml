@@ -25,7 +25,8 @@ asr:
   min_speech_ms: 300   # shorter clips are ignored
 
 tts:
-  voice: en-US-EmmaMultilingualNeural   # reads English and Vietnamese
+  voice: en-US-EmmaMultilingualNeural   # English words and sentences
+  voice_vi: vi-VN-HoaiMyNeural          # Vietnamese explanations (native Vietnamese voice)
   rate: "-5%"
 
 llm:

@@ -47,7 +47,7 @@ MAX_FIRMWARE = 16 * 1024 * 1024
 MAX_DECK = 8 * 1024 * 1024
 
 SETTING_KEYS = {
-    "prompt": str, "wake_greeting": str, "tts_voice": str, "tts_rate": str,
+    "prompt": str, "wake_greeting": str, "tts_voice": str, "tts_voice_vi": str, "tts_rate": str,
     "silence_ms": int, "temperature": float, "max_tokens": int, "history_messages": int,
     "approval_required": bool, "daily_cost_limit": float, "log_retention_days": int,
     "firmware_release": str, "default_deck": int, "max_new_per_ip_day": int,
@@ -250,12 +250,12 @@ def save_settings(changes):
 
 def config_defaults():
     """Defaults shipped with the backend, shown as placeholders in the settings form."""
-    out = {"prompt": "", "wake_greeting": "", "tts_voice": "", "tts_rate": "", "silence_ms": 700,
+    out = {"prompt": "", "wake_greeting": "", "tts_voice": "", "tts_voice_vi": "", "tts_rate": "", "silence_ms": 700,
            "temperature": 0.7, "max_tokens": 400, "history_messages": 16}
     try:
         out["prompt"] = open(os.path.join(BASE, "prompt.txt"), encoding="utf-8").read().strip()
         text = open(os.path.join(BASE, "config.yaml"), encoding="utf-8").read()
-        for key, pat in (("tts_voice", r"voice:\s*(\S+)"), ("tts_rate", r'rate:\s*"([^"]*)"'),
+        for key, pat in (("tts_voice", r"voice:\s*(\S+)"), ("tts_voice_vi", r"voice_vi:\s*(\S+)"), ("tts_rate", r'rate:\s*"([^"]*)"'),
                          ("wake_greeting", r'wake_greeting:\s*"([^"]*)"')):
             m = re.search(pat, text)
             if m:
@@ -380,7 +380,7 @@ def devices():
         "(SELECT COUNT(*) FROM turns t WHERE t.device=d.id) turns, "
         "(SELECT COALESCE(SUM(cost),0) FROM turns t WHERE t.device=d.id) cost, "
         "(SELECT COUNT(*) FROM turns t WHERE t.device=d.id AND t.ts>=? AND t.user_text!='') turns_today, "
-        "(SELECT COUNT(*) FROM turns t WHERE t.device=d.id AND t.ts>=? AND t.user_text!='') turns_month "
+        "(SELECT COUNT(*) FROM turns t WHERE t.device=d.id AND t.ts>=? AND t.user_text!='') turns_month, "
         "COALESCE((SELECT last_sync FROM device_sync s WHERE s.device=d.id),0) last_sync, "
         "COALESCE((SELECT events FROM device_sync s WHERE s.device=d.id),0) sync_events "
         "FROM devices d LEFT JOIN plans p ON p.id=d.plan_id "

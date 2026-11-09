@@ -132,7 +132,9 @@ async def websocket(request: web.Request) -> web.StreamResponse:
 
 
 async def health(request: web.Request) -> web.Response:
-    return web.json_response({"ok": True})
+    # the voices in use, so a deployment can be checked with: curl https://<server>/health
+    eff = effective(request.app["config"])
+    return web.json_response({"ok": True, "tts_voice_en": eff["tts_voice"], "tts_voice_vi": eff["tts_voice_vi"]})
 
 
 async def housekeeping(app: web.Application):

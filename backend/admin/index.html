@@ -86,8 +86,11 @@ function setMsg(el,t,c){el.className='msg '+(c||'');el.textContent=t}
 
 /* ---------- routing ---------- */
 const tabs={overview,devices,plans,turns,vocab,offline,firmware,settings,logs};
-let timer=null;
-function go(){const t=(location.hash||'#overview').slice(1).split('?')[0];const name=tabs[t]?t:'overview';
+let timer=null,curTab='';
+// The single auto-refresh timer of the open tab. Setting it replaces the previous one, so a refresh that re-arms
+// itself cannot pile up timers that keep redrawing an old tab over the current one.
+function arm(fn,ms){clearInterval(timer);timer=setInterval(fn,ms)}
+function go(){const t=(location.hash||'#overview').slice(1).split('?')[0];const name=tabs[t]?t:'overview';curTab=name;
   document.querySelectorAll('nav a').forEach(a=>a.classList.toggle('on',a.dataset.t===name));
   clearInterval(timer);timer=null;$('#view').innerHTML='<p class="hint">Đang tải…</p>';tabs[name]()}
 document.querySelectorAll('nav a').forEach(a=>a.onclick=()=>{location.hash=a.dataset.t});
@@ -97,7 +100,7 @@ async function pendingBadge(){try{const r=await api('/api/overview');const n=r.d
 
 /* ---------- overview ---------- */
 async function overview(){
-  const o=await api('/api/overview');const t=o.today,w=o.week,m=o.month,dv=o.devices;
+  const o=await api('/api/overview');if(curTab!=='overview')return;const t=o.today,w=o.week,m=o.month,dv=o.devices;
   const pct=o.limit?Math.min(100,t.cost/o.limit*100):0;
   const max=Math.max(1,...o.days.map(d=>d.n));
   const bars=o.days.map((d,i)=>{const h=Math.round(d.n/max*100),x=10+i*39;
@@ -119,7 +122,7 @@ async function overview(){
     <div class="card"><h3>Model đang dùng</h3><div>Hội thoại: <b>${esc(o.model||'chưa chọn')}</b></div><div>Nhận giọng nói: <b>${esc(o.asr_model||'mặc định')}</b></div></div>
     <div class="card"><h3>Công cụ dùng nhiều (7 ngày)</h3>${o.tools.length?o.tools.map(([k,v])=>`<div>${esc(k)} <span class="tag">${v}</span></div>`).join(''):'<span class="hint">Chưa có</span>'}</div>
   </div>`;
-  pendingBadge();timer=setInterval(()=>{if(document.hidden)return;overview()},30000)}
+  pendingBadge();arm(()=>{if(document.hidden)return;overview()},30000)}
 
 /* ---------- devices ---------- */
 const STATE={pending:['warn','Chờ kích hoạt'],blocked:['bad','Bị khóa'],expired:['bad','Hết hạn gói'],limit:['warn','Hết lượt'],online:['ok','Đang hoạt động'],idle:['','Sẵn sàng']};
@@ -130,7 +133,7 @@ function planLine(d){
   const exp=d.plan_expires?`<span>Hết hạn ${dshort(d.plan_expires)} (${left>=0?'còn '+left+' ngày':'quá hạn '+(-left)+' ngày'})</span>`:(d.plan_name?'<span>Không hết hạn</span>':'');
   return `<span>Gói: <b>${esc(d.plan_name||'chưa gán')}</b></span>${exp}<span>Hôm nay ${d.turns_today}${d.plan_daily?'/'+d.plan_daily:''} lượt</span><span>Tháng này ${d.turns_month}${d.plan_monthly?'/'+d.plan_monthly:''} lượt</span>`}
 async function devices(){
-  const [r,dkr,pl]=await Promise.all([api('/api/devices'),api('/api/decks'),api('/api/plans')]);
+  const [r,dkr,pl]=await Promise.all([api('/api/devices'),api('/api/decks'),api('/api/plans')]);if(curTab!=='devices')return;
   const list=r.devices,dk=dkr.decks,plans=pl.plans;
   $('#view').innerHTML=`<h2>Thiết bị</h2>
   <div class="card"><h3>Kích hoạt bằng mã</h3>
@@ -174,7 +177,7 @@ async function devices(){
     else if(a==='vocab'){location.hash='vocab?device='+encodeURIComponent(id);return}
     else if(a==='delete'){if(!confirm('Xóa thiết bị khỏi danh sách? (Thiết bị sẽ tự đăng ký lại nếu nó vẫn kết nối.)'))return;const purge=confirm('Xóa luôn lịch sử hội thoại và sổ từ vựng của thiết bị này?\n(OK = xóa hết, Cancel = giữ dữ liệu)');await api('/api/device/delete',{id,purge})}
     devices();pendingBadge()};
-  pendingBadge();timer=setInterval(()=>{if(!document.hidden&&!document.activeElement.closest('.dev')&&document.activeElement.id!=='ac')devices()},15000)}
+  pendingBadge();arm(()=>{if(!document.hidden&&!document.activeElement.closest('.dev')&&document.activeElement.id!=='ac')devices()},15000)}
 
 /* ---------- plans ---------- */
 async function plans(){
@@ -263,7 +266,7 @@ async function deckPanel(){
 
 /* ---------- offline study packs ---------- */
 async function offline(){
-  const r=await api('/api/packs');
+  const r=await api('/api/packs');if(curTab!=='offline')return;
   const mb=n=>(n/1048576).toFixed(2)+' MB';
   const store=r.store_bytes;
   $('#view').innerHTML=`<h2>Học offline</h2>
@@ -294,7 +297,7 @@ async function offline(){
       const j=await api('/api/packs/build',{deck_id:id,count:n,bitrate:card.querySelector('.br').value});if(j.error)return alert(j.error)}
     offline()};
   const busy=r.decks.some(d=>d.build&&d.build.state==='running');
-  if(busy)timer=setInterval(()=>{if(!document.hidden)offline()},5000)}
+  if(busy)arm(()=>{if(!document.hidden)offline()},5000)}
 
 /* ---------- firmware ---------- */
 async function firmware(){
@@ -338,7 +341,8 @@ async function settings(){
     <div class="hint">Để trống = dùng prompt mặc định. Nhớ giữ các quy tắc về công cụ (lookup_word, save_word, next_review_word, grade_word) nếu bạn viết prompt riêng.</div>
     <div class="row"><button class="s" id="spd">Điền prompt mặc định để sửa</button></div>
     <label class="f" for="sg">Câu chào khi gọi tên wake word</label><input id="sg" type="text" value="${esc(v('wake_greeting',''))}" placeholder="${esc(df.wake_greeting)}">
-    <div class="row"><div class="grow"><label class="f" for="sv">Giọng đọc</label><input id="sv" list="vl" type="text" value="${esc(v('tts_voice',''))}" placeholder="${esc(df.tts_voice)}"><datalist id="vl">${VOICES.map(x=>`<option value="${x}">`).join('')}</datalist></div>
+    <div class="row"><div class="grow"><label class="f" for="sv">Giọng đọc tiếng Anh</label><input id="sv" list="vl" type="text" value="${esc(v('tts_voice',''))}" placeholder="${esc(df.tts_voice)}"><datalist id="vl">${VOICES.map(x=>`<option value="${x}">`).join('')}</datalist></div>
+      <div class="grow"><label class="f" for="sv2v">Giọng đọc tiếng Việt</label><input id="sv2v" list="vl" type="text" value="${esc(v('tts_voice_vi',''))}" placeholder="${esc(df.tts_voice_vi)}"></div>
       <div class="grow"><label class="f" for="sr">Tốc độ đọc</label><input id="sr" type="text" value="${esc(v('tts_rate',''))}" placeholder="${esc(df.tts_rate)} (ví dụ -10%, +0%)"></div></div></div>
 
   <div class="card"><h3>Hành vi hội thoại</h3><div class="row">
@@ -384,7 +388,7 @@ async function settings(){
   /* behaviour */
   $('#spd').onclick=()=>{$('#sp').value=df.prompt};
   const num=id=>{const x=$(id).value;return x===''?'':Number(x)};
-  $('#sv2').onclick=async()=>{const r=await api('/api/settings',{prompt:$('#sp').value.trim()===df.prompt.trim()?'':$('#sp').value,wake_greeting:$('#sg').value,tts_voice:$('#sv').value.trim(),tts_rate:$('#sr').value.trim(),
+  $('#sv2').onclick=async()=>{const r=await api('/api/settings',{prompt:$('#sp').value.trim()===df.prompt.trim()?'':$('#sp').value,wake_greeting:$('#sg').value,tts_voice:$('#sv').value.trim(),tts_voice_vi:$('#sv2v').value.trim(),tts_rate:$('#sr').value.trim(),
       silence_ms:num('#si'),temperature:num('#st'),max_tokens:num('#sm'),history_messages:num('#sh'),approval_required:$('#sa').checked,max_new_per_ip_day:num('#sn')===''?0:num('#sn'),daily_cost_limit:num('#sl')===''?0:num('#sl'),log_retention_days:num('#sd')===''?0:num('#sd')});
     setMsg($('#sm2'),r.ok?'Đã lưu. Áp dụng từ cuộc trò chuyện tiếp theo.':(r.error||'Lỗi'),r.ok?'ok':'bad')};
   $('#sc').onclick=async()=>{if(!confirm('Xóa TOÀN BỘ lịch sử hội thoại? Không thể khôi phục.'))return;const r=await api('/api/turns/clear',{older_days:0});setMsg($('#sm2'),'Đã xóa '+r.deleted+' lượt','ok')};
@@ -399,7 +403,7 @@ async function logs(){
     const lines=(r.lines||[]).filter(l=>!f||l.toLowerCase().includes(f));const p=$('#lp');const atEnd=p.scrollTop+p.clientHeight>=p.scrollHeight-40;
     p.textContent=lines.join('\n');if(atEnd)p.scrollTop=p.scrollHeight}
   await load();$('#lp').scrollTop=$('#lp').scrollHeight;$('#lr').onclick=load;$('#ln').onchange=load;$('#lf').oninput=load;
-  timer=setInterval(()=>{if($('#la').checked&&!document.hidden)load()},5000)}
+  arm(()=>{if($('#la').checked&&!document.hidden)load()},5000)}
 
 go();pendingBadge();
 </script>

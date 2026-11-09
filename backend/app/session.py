@@ -30,6 +30,21 @@ OFFLINE_INTENT = re.compile(
 ASKING_MEANING = re.compile(r"\b(mean|means|meaning|define|definition)\b|nghĩa|là gì", re.I)
 CONTINUE_INTENT = re.compile(
     r"^\W*(next|ready|continue|go on|go ahead|yes|yeah|ok(ay)?|sure|tiếp( theo| tục)?|sẵn sàng|được|rồi|ừ)\W*$", re.I)
+# Interpreter mode: every utterance is translated, Vietnamese to English and English to Vietnamese. The device sends
+# "Chế độ phiên dịch" when the learner opens the Interpreter tile; it can also be asked for by voice.
+INTERPRETER_ON = re.compile(
+    r"chế độ (phiên|thông) dịch|\b(làm|bật)\b.{0,12}\b(phiên|thông) dịch|phiên dịch (giúp|cho) (mình|tôi)|"
+    r"\binterpreter mode\b|\bact as (an? )?interpreter\b", re.I)
+INTERPRETER_OFF = re.compile(
+    r"(thoát|dừng|tắt|hết|kết thúc|ngừng).{0,15}(phiên|thông) dịch|\b(stop|exit|end|quit)\b.{0,20}\b(interpret|translat)",
+    re.I)
+INTERPRETER_PROMPT = (
+    "You are a precise two-way interpreter between Vietnamese and English. The user message is a speech transcript. "
+    "If it is Vietnamese, output only its English translation. If it is English, output only its Vietnamese translation. "
+    "If it mixes both, translate it into the language that is not the main one. "
+    "Output only the translation: no quotes, no notes, no explanations, no markdown, no emoji, no romanization. "
+    "Keep the meaning and the tone of the speaker, keep names unchanged, and translate the whole text however long. "
+    "Write Vietnamese with full accents.")
 WATCH_INTERVAL = 3        # seconds between status / command checks
 
 
@@ -48,7 +63,7 @@ class Session:
         v = self.cfg["vad"]
         self.endpointer = Endpointer(rate, v["aggressiveness"], self.eff["silence_ms"],
                                      v["min_speech_ms"], v["max_utterance_s"])
-        self.tts = Synthesizer(self.eff["tts_voice"], self.eff["tts_rate"], rate)
+        self.tts = Synthesizer(self.eff["tts_voice"], self.eff["tts_rate"], rate, self.eff["tts_voice_vi"])
         self.listening = False
         self.mode = "auto"
         self.busy = False                       # transcribing or speaking
@@ -56,6 +71,7 @@ class Session:
         self.history: list[dict] = []
         self.speaking = False                   # a tts start was sent and no tts stop yet
         self.learning = False                   # a new word was just taught, "next" means another one
+        self.interpreter = False                # interpreter mode: translate every utterance
         self.utterance_end = 0.0
         self.turn: dict | None = None           # the turn about to be answered
         self.cur_turn: dict | None = None       # the turn being answered right now
@@ -299,6 +315,15 @@ class Session:
         yield text
 
     async def reply_llm(self, user_text: str):
+        if self.interpreter and INTERPRETER_OFF.search(user_text):
+            self.interpreter = False
+            yield "Đã thoát chế độ phiên dịch."
+            return
+        if not self.interpreter and INTERPRETER_ON.search(user_text) and not INTERPRETER_OFF.search(user_text):
+            self.interpreter = True
+            yield ("Sẵn sàng phiên dịch. Bạn nói tiếng Việt thì mình dịch sang tiếng Anh, "
+                   "bạn nói tiếng Anh thì mình dịch sang tiếng Việt.")
+            return
         settings = load_llm_settings()
         if not settings["api_key"] or not settings["model"]:
             yield "The language model is not configured yet. Please set it up in the admin page."
@@ -317,25 +342,31 @@ class Session:
                   self.eff["temperature"], self.eff["max_tokens"])
         if self.cur_turn is not None:
             self.cur_turn["llm"] = llm
-        self.history.append({"role": "user", "content": user_text})
-        del self.history[:-self.eff["history_messages"]]
-        messages = [{"role": "system", "content": self.eff["prompt"]}] + self.history
-        schemas = tools.SCHEMAS
+        if self.interpreter:
+            # stateless: each utterance is translated on its own, without the tutor prompt, history or tools
+            messages = [{"role": "system", "content": INTERPRETER_PROMPT}, {"role": "user", "content": user_text}]
+            schemas = []
+        else:
+            self.history.append({"role": "user", "content": user_text})
+            del self.history[:-self.eff["history_messages"]]
+            messages = [{"role": "system", "content": self.eff["prompt"]}] + self.history
+            schemas = tools.SCHEMAS
 
-        if OFFLINE_INTENT.search(user_text) and not ASKING_MEANING.search(user_text):
-            hint = await tools.run_tool(self.device_id, "start_offline_study", {})
-            llm.tools_used.append("start_offline_study")
-            messages.append({"role": "system", "content": hint})
-            schemas = [s for s in schemas if s["function"]["name"] != "start_offline_study"]
-        wants_word = bool(NEW_WORD_INTENT.search(user_text)) or (
-            self.learning and bool(CONTINUE_INTENT.match(user_text)))
-        self.learning = False
-        if wants_word:
-            word = await tools.run_tool(self.device_id, "learn_new_words", {})
-            llm.tools_used.append("learn_new_words")
-            self.learning = word.startswith("New word")
-            messages.append({"role": "system", "content": word})
-            schemas = [s for s in schemas if s["function"]["name"] != "learn_new_words"]
+            if OFFLINE_INTENT.search(user_text) and not ASKING_MEANING.search(user_text):
+                hint = await tools.run_tool(self.device_id, "start_offline_study", {})
+                llm.tools_used.append("start_offline_study")
+                messages.append({"role": "system", "content": hint})
+                schemas = [s for s in schemas if s["function"]["name"] != "start_offline_study"]
+            wants_word = bool(NEW_WORD_INTENT.search(user_text)) or (
+                self.learning and bool(CONTINUE_INTENT.match(user_text)))
+            self.learning = False
+            if wants_word:
+                word = await tools.run_tool(self.device_id, "learn_new_words", {})
+                llm.tools_used.append("learn_new_words")
+                self.learning = word.startswith("New word")
+                messages.append({"role": "system", "content": word})
+                schemas = [s for s in schemas if s["function"]["name"] != "learn_new_words"]
+
 
         async def run_tool(name, args):
             return await tools.run_tool(self.device_id, name, args)
@@ -358,6 +389,7 @@ class Session:
             yield buf.strip()
         if not produced:
             yield "Sorry, I did not catch that. Could you say it again?"
-        # keep only the conversational turns (drop tool plumbing) for the next question
-        self.history = [m for m in messages[1:]
-                        if m["role"] in ("user", "assistant") and m.get("content")]
+        if not self.interpreter:
+            # keep only the conversational turns (drop tool plumbing) for the next question
+            self.history = [m for m in messages[1:]
+                            if m["role"] in ("user", "assistant") and m.get("content")]

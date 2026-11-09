@@ -24,6 +24,7 @@ SETTINGS_DEFAULTS = {
     "prompt": "",                 # empty = use prompt.txt
     "wake_greeting": "",          # empty = use config.yaml
     "tts_voice": "",
+    "tts_voice_vi": "",
     "tts_rate": "",
     "silence_ms": 0,              # 0 = use config.yaml
     "temperature": None,
@@ -68,6 +69,7 @@ def effective(cfg: dict) -> dict:
         "prompt": s["prompt"].strip() or load_prompt(),
         "wake_greeting": s["wake_greeting"].strip() or cfg["wake_greeting"],
         "tts_voice": s["tts_voice"].strip() or cfg["tts"]["voice"],
+        "tts_voice_vi": s["tts_voice_vi"].strip() or cfg["tts"].get("voice_vi", "vi-VN-HoaiMyNeural"),
         "tts_rate": s["tts_rate"].strip() or cfg["tts"]["rate"],
         "silence_ms": s["silence_ms"] or cfg["vad"]["silence_ms"],
         "temperature": cfg["llm"]["temperature"] if s["temperature"] is None else s["temperature"],
