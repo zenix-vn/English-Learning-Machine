@@ -1,0 +1,6 @@
+-dontwarn io.github.jaredmdobson.concentus.**
+-keep class io.github.jaredmdobson.concentus.** { *; }
+-dontwarn okhttp3.internal.platform.**
+-dontwarn org.conscrypt.**
+-dontwarn org.bouncycastle.**
+-dontwarn org.openjsse.**
