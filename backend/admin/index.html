@@ -119,7 +119,7 @@ async function overview(){
   <div class="card"><h3>Số lượt hội thoại 14 ngày qua</h3>
     <svg viewBox="0 0 560 140" width="100%" role="img" aria-label="Số lượt hội thoại mỗi ngày">${bars}</svg></div>
   <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(280px,1fr))">
-    <div class="card"><h3>Model đang dùng</h3><div>Hội thoại: <b>${esc(o.model||'chưa chọn')}</b></div><div>Nhận giọng nói: <b>${esc(o.asr_model||'mặc định')}</b></div></div>
+    <div class="card"><h3>Model đang dùng</h3><div>Học Online: <b>${esc(o.model||'chưa chọn')}</b></div><div>Trò chuyện: <b>${esc(o.chat_model||'dùng chung')}</b></div><div>Nhận giọng nói: <b>${esc(o.asr_model||'mặc định')}</b></div></div>
     <div class="card"><h3>Công cụ dùng nhiều (7 ngày)</h3>${o.tools.length?o.tools.map(([k,v])=>`<div>${esc(k)} <span class="tag">${v}</span></div>`).join(''):'<span class="hint">Chưa có</span>'}</div>
   </div>`;
   pendingBadge();arm(()=>{if(document.hidden)return;overview()},30000)}
@@ -329,8 +329,8 @@ async function settings(){
   <div class="card"><h3>Model AI (OpenRouter)</h3>
     <label class="f" for="key">API key</label><input id="key" type="password" placeholder="sk-or-v1-…" autocomplete="off">
     <div class="hint">${st.has_key?'Đã lưu key '+esc(st.key_hint)+' (để trống nếu không đổi).':'Chưa có key.'}</div>
-    <div style="margin-top:10px">Hội thoại: <b id="cLlm">${esc(st.model||'chưa chọn')}</b> · Nhận giọng nói: <b id="cAsr">${esc(st.asr_model||'mặc định')}</b></div>
-    <div class="row" style="margin:10px 0"><button id="mL" class="p">Chọn model hội thoại</button><button id="mA">Chọn model nhận giọng nói</button>
+    <div style="margin-top:10px">Học Online: <b id="cLlm">${esc(st.model||'chưa chọn')}</b> · Trò chuyện: <b id="cChat">${esc(st.chat_model||'dùng chung model Học Online')}</b> · Nhận giọng nói: <b id="cAsr">${esc(st.asr_model||'mặc định')}</b></div>
+    <div class="row" style="margin:10px 0"><button id="mL" class="p">Model Học Online</button><button id="mC">Model Trò chuyện (nên chọn free)</button><button id="mCx">Trò chuyện dùng chung</button><button id="mA">Chọn model nhận giọng nói</button>
       <input id="mq" type="search" class="grow" placeholder="Tìm model"><label class="tag"><input type="checkbox" id="mT" checked> tools</label><label class="tag"><input type="checkbox" id="mF"> miễn phí</label></div>
     <div class="scroll"><table><thead><tr><th data-k="name">Model</th><th class="n" data-k="in">In $/1M</th><th class="n" data-k="out">Out $/1M</th><th class="n" data-k="turn">~$/1000 lượt</th><th class="n" data-k="ctx">Context</th></tr></thead><tbody id="mb"><tr><td colspan="5">Đang tải…</td></tr></tbody></table></div>
     <div class="hint" id="mc">Model hội thoại nên có "tools"; model nhận giọng nói phải có "audio". "~$/1000 lượt" ước tính với ~1500 token vào + 100 token ra.</div>
@@ -365,23 +365,23 @@ async function settings(){
     <div class="msg" id="pm"></div><div class="hint">Sau khi đổi, trình duyệt sẽ hỏi lại mật khẩu.</div></div>`;
 
   /* models */
-  let models=[],mode='llm',sel={llm:st.model||'',asr:st.asr_model||''},sk='turn',sd=1;
+  let models=[],mode='llm',sel={llm:st.model||'',chat:st.chat_model||'',asr:st.asr_model||''},sk='turn',sd=1;
   const turn=m=>(m.in*1500+m.out*100)/1e3, mon=x=>x===0?'Free':x<0.01?x.toFixed(4):x<1?x.toFixed(3):x.toFixed(2);
   const ctx=n=>n>=1e6?(n/1e6).toFixed(1)+'M':n>=1e3?Math.round(n/1e3)+'K':n;
   function rm(){const q=$('#mq').value.toLowerCase(),t=$('#mT').checked&&mode==='llm',f=$('#mF').checked;
     let l=models.filter(m=>(mode==='asr'?m.audio:true)&&(!t||m.tools)&&(!f||m.free)&&(m.id+' '+m.name).toLowerCase().includes(q));
     l.sort((a,b)=>{const pa=(a.id===sel[mode])?0:1,pb=(b.id===sel[mode])?0:1;if(pa!==pb)return pa-pb;const x=sk==='turn'?turn(a):a[sk],y=sk==='turn'?turn(b):b[sk];return(typeof x==='string'?x.localeCompare(y):x-y)*sd});
     $('#mb').innerHTML=l.slice(0,300).map(m=>`<tr class="m ${m.id===sel[mode]?'sel':''}" data-id="${esc(m.id)}"><td>${esc(m.name)} ${m.tools?'<span class="tag">tools</span>':''}${m.audio?' <span class="tag">audio</span>':''}${m.free?' <span class="tag ok">free</span>':''}<div class="hint">${esc(m.id)}</div></td><td class="n">${mon(m.in)}</td><td class="n">${mon(m.out)}</td><td class="n">${m.free?'Free':'$'+mon(turn(m))}</td><td class="n">${ctx(m.ctx)}</td></tr>`).join('')||'<tr><td colspan="5">Không có model phù hợp</td></tr>';
-    $('#cLlm').textContent=sel.llm||'chưa chọn';$('#cAsr').textContent=sel.asr||'mặc định';
+    $('#cLlm').textContent=sel.llm||'chưa chọn';$('#cChat').textContent=sel.chat||'dùng chung model Học Online';$('#mC').className=mode==='chat'?'p':'';$('#cAsr').textContent=sel.asr||'mặc định';
     $('#mL').className=mode==='llm'?'p':'';$('#mA').className=mode==='asr'?'p':''}
   $('#mb').onclick=e=>{const tr=e.target.closest('tr.m');if(tr){sel[mode]=tr.dataset.id;rm()}};
-  $('#mL').onclick=()=>{mode='llm';rm()};$('#mA').onclick=()=>{mode='asr';rm()};
+  $('#mL').onclick=()=>{mode='llm';rm()};$('#mC').onclick=()=>{mode='chat';rm()};$('#mCx').onclick=()=>{sel.chat='';rm()};$('#mA').onclick=()=>{mode='asr';rm()};
   document.querySelectorAll('.scroll th[data-k]').forEach(th=>th.onclick=()=>{const k=th.dataset.k;if(sk===k)sd*=-1;else{sk=k;sd=1}rm()});
   ['mq','mT','mF'].forEach(i=>$('#'+i).oninput=rm);
   $('#mt').onclick=async()=>{const m=sel[mode];if(!m)return setMsg($('#mm'),'Hãy chọn model','bad');setMsg($('#mm'),'Đang thử…');
     const r=await api('/api/test',{model:m,api_key:$('#key').value});r.ok?setMsg($('#mm'),`OK (${r.ms} ms): “${r.reply.trim()}”`,'ok'):setMsg($('#mm'),r.error,'bad')};
-  $('#ms').onclick=async()=>{if(!sel.llm)return setMsg($('#mm'),'Hãy chọn model hội thoại','bad');
-    const r=await api('/api/save',{model:sel.llm,asr_model:sel.asr,api_key:$('#key').value});
+  $('#ms').onclick=async()=>{if(!sel.llm)return setMsg($('#mm'),'Hãy chọn model Học Online','bad');
+    const r=await api('/api/save',{model:sel.llm,chat_model:sel.chat,asr_model:sel.asr,api_key:$('#key').value});
     if(r.error)return setMsg($('#mm'),r.error,'bad');$('#key').value='';setMsg($('#mm'),'Đã lưu. Áp dụng từ cuộc trò chuyện tiếp theo.','ok')};
   api('/api/models').then(r=>{if(r.error){$('#mb').innerHTML='<tr><td colspan="5">Lỗi tải model: '+esc(r.error)+'</td></tr>';return}models=r.models;rm()});
 

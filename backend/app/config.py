@@ -18,6 +18,8 @@ DATA = ROOT / "data"
 DATA.mkdir(parents=True, exist_ok=True)
 
 DEFAULT_ASR_MODEL = "google/gemini-2.5-flash-lite"
+# Tried when the main speech model is busy (rate limited): another model has its own limit.
+DEFAULT_ASR_FALLBACK_MODEL = "google/gemini-2.5-flash"
 
 # Settings editable from the admin page, with their defaults.
 SETTINGS_DEFAULTS = {
@@ -84,10 +86,12 @@ def effective(cfg: dict) -> dict:
 
 
 def load_llm_settings() -> dict:
-    """Return model, asr_model and api_key; empty strings when not configured."""
+    """Return model, chat_model, asr_model and api_key; empty strings when not configured."""
     d = _read_json("llm.json")
     return {"model": d.get("model", ""), "api_key": d.get("api_key", ""),
-            "asr_model": d.get("asr_model") or DEFAULT_ASR_MODEL}
+            "asr_model": d.get("asr_model") or DEFAULT_ASR_MODEL,
+            "asr_fallback_model": d.get("asr_fallback_model", DEFAULT_ASR_FALLBACK_MODEL),   # "" turns it off
+            "chat_model": d.get("chat_model", "")}       # free conversation; empty = same model as the lessons
 
 
 def _secret() -> bytes:

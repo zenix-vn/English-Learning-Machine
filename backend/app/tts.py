@@ -14,6 +14,9 @@ _MARKDOWN = re.compile(r"[*_`#>~|]+")
 _BRACKETS = re.compile(r"[\(\[\{][^\)\]\}]*[\)\]\}]")
 _SLASHED = re.compile(r"/[^/\s]*[^\x00-\x7f][^/]*/")      # /IPA symbols/
 _EMOJI = re.compile("[\U0001F000-\U0001FFFF☀-➿️]")
+TTS_ATTEMPTS = 3
+TTS_ATTEMPT_TIMEOUT_S = 6
+_PLAIN = re.compile(r"[^\w\s'.,!?-]+")
 _CJK = re.compile("[　-〿㐀-鿿＀-￯]")
 
 
@@ -114,18 +117,29 @@ class Synthesizer:
                                      for lang, t in runs))
         return b"".join(pcm)
 
-    async def _speak(self, text: str, voice: str) -> bytes:
+    async def _collect(self, text: str, voice: str) -> bytearray:
         mp3 = bytearray()
-        for attempt in range(2):
+        comm = edge_tts.Communicate(text, voice, rate=self.rate)
+        async for chunk in comm.stream():
+            if chunk["type"] == "audio":
+                mp3 += chunk["data"]
+        return mp3
+
+    async def _speak(self, text: str, voice: str) -> bytes:
+        """Edge sometimes answers "No audio was received" or stalls. Each attempt has a time limit so a stall
+        costs a few seconds instead of a whole turn, and there are three attempts (the last one with the
+        text trimmed to plain words)."""
+        mp3 = bytearray()
+        for attempt in range(TTS_ATTEMPTS):
             try:
-                comm = edge_tts.Communicate(text, voice, rate=self.rate)
-                async for chunk in comm.stream():
-                    if chunk["type"] == "audio":
-                        mp3 += chunk["data"]
-                break
-            except Exception as e:  # network hiccup: retry once
-                log.warning("tts attempt %d failed: %s", attempt + 1, e)
-                mp3.clear()
+                attempt_text = text if attempt < TTS_ATTEMPTS - 1 else (_PLAIN.sub(" ", text).strip() or text)
+                mp3 = await asyncio.wait_for(self._collect(attempt_text, voice), TTS_ATTEMPT_TIMEOUT_S)
+                if mp3:
+                    break
+            except Exception as e:  # network hiccup or no audio: try again
+                log.warning("tts attempt %d failed: %s", attempt + 1, e or type(e).__name__)
+                mp3 = bytearray()
+            await asyncio.sleep(0.2 * (attempt + 1))
         if not mp3:
             return b""
         return await asyncio.get_running_loop().run_in_executor(

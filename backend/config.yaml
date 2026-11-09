@@ -17,7 +17,7 @@ audio:
 
 vad:
   aggressiveness: 2       # 0 (lenient) .. 3 (strict)
-  silence_ms: 700         # end of utterance after this much silence
+  silence_ms: 500         # end of utterance after this much silence
   min_speech_ms: 300      # ignore blips shorter than this
   max_utterance_s: 20
 

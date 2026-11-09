@@ -367,7 +367,7 @@ def overview():
         "today": agg(today), "week": agg(today - 6 * DAY), "month": agg(today - 29 * DAY),
         "days": days, "tools": sorted(tools.items(), key=lambda kv: -kv[1]),
         "limit": float(settings.get("daily_cost_limit") or 0),
-        "model": llm.get("model", ""), "asr_model": llm.get("asr_model", ""),
+        "model": llm.get("model", ""), "chat_model": llm.get("chat_model", ""), "asr_model": llm.get("asr_model", ""),
         "credit": openrouter_credit(llm["api_key"]) if llm.get("api_key") else None,
     }
 
@@ -681,7 +681,8 @@ class H(BaseHTTPRequestHandler):
             if path == PREFIX + "/api/state":
                 s = read_json(LLM_FILE, {})
                 k = s.get("api_key", "")
-                return self._json({"model": s.get("model", ""), "asr_model": s.get("asr_model", ""),
+                return self._json({"model": s.get("model", ""), "chat_model": s.get("chat_model", ""),
+                                   "asr_model": s.get("asr_model", ""),
                                    "has_key": bool(k), "key_hint": ("…" + k[-4:]) if k else "",
                                    "backend": backend_status()})
             if path == PREFIX + "/api/overview":
@@ -763,6 +764,8 @@ class H(BaseHTTPRequestHandler):
             llm.update(model=model, api_key=key)
             if (data.get("asr_model") or "").strip():
                 llm["asr_model"] = data["asr_model"].strip()
+            if "chat_model" in data:                # empty = the free conversation uses the lessons' model
+                llm["chat_model"] = (data.get("chat_model") or "").strip()
             write_json(LLM_FILE, llm)
             return self._json({"ok": True})
         if a == "/api/settings":

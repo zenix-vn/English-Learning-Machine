@@ -6,6 +6,7 @@ import time
 
 import aiohttp
 
+from . import curriculum
 from .config import DATA, load_settings
 
 log = logging.getLogger("tools")
@@ -43,6 +44,11 @@ SCHEMAS = [
                         "asks to study offline, without internet, or with flashcards on the device."),
         "parameters": {"type": "object", "properties": {}}}},
     {"type": "function", "function": {
+        "name": "finish_lesson",
+        "description": ("Mark the CURRENT LESSON as finished and get the next lesson. Call it only after the learner "
+                        "has practised the lesson's words and sentences, in the same turn as your praise."),
+        "parameters": {"type": "object", "properties": {}}}},
+    {"type": "function", "function": {
         "name": "grade_word",
         "description": "Record the review result. quality: 0 wrong/forgotten, 3 correct but hard, 4 correct, 5 very easy.",
         "parameters": {"type": "object", "properties": {
@@ -66,7 +72,9 @@ def _db() -> sqlite3.Connection:
         CREATE TABLE IF NOT EXISTS deck_words(
             deck_id INTEGER, rank INTEGER, word TEXT, ipa TEXT, meaning TEXT, example TEXT,
             PRIMARY KEY(deck_id, rank));
-        CREATE TABLE IF NOT EXISTS device_deck(device TEXT PRIMARY KEY, deck_id INTEGER);""")
+        CREATE TABLE IF NOT EXISTS device_deck(device TEXT PRIMARY KEY, deck_id INTEGER);
+        CREATE TABLE IF NOT EXISTS lesson_progress(          -- the Học Online programme, see curriculum.py
+            device TEXT, lesson TEXT, done_at INTEGER, PRIMARY KEY(device, lesson));""")
     return con
 
 
@@ -121,6 +129,43 @@ def _next_review_word(device: str) -> str:
     word, meaning, example = row
     return (f"Word to review: {word}\nAnswer (secret, only for grading): {meaning}\n"
             f"Example: {example}\n{left} words are due. Say the English word and ask for its meaning.")
+
+
+def lesson_state(device: str) -> tuple[dict | None, int]:
+    """(the learner's current lesson or None when all are done, number of lessons finished)."""
+    with _db() as con:
+        done = {r[0] for r in con.execute("SELECT lesson FROM lesson_progress WHERE device=?", (device,))}
+    done &= set(curriculum.BY_ID)
+    return curriculum.current(done), len(done)
+
+
+def _finish_lesson(device: str) -> str:
+    lesson, _ = lesson_state(device)
+    if lesson is None:
+        return "The whole programme is finished. Congratulate the learner warmly."
+    with _db() as con:
+        con.execute("INSERT OR IGNORE INTO lesson_progress(device,lesson,done_at) VALUES(?,?,?)",
+                    (device, lesson["id"], int(time.time())))
+    nxt, finished = lesson_state(device)
+    if nxt is None:
+        return (f"Lesson finished ({finished} of {len(curriculum.LESSONS)}): that was the last lesson of the programme. "
+                "Congratulate the learner warmly in Vietnamese and suggest free conversation practice.")
+    return (f"Lesson finished ({finished} of {len(curriculum.LESSONS)}). Praise the learner in one short sentence, then "
+            f"tell them in Vietnamese that the next lesson is: {curriculum.label(nxt)}. Ask if they want to continue now "
+            "or take a break. If they continue, start that lesson.")
+
+
+def learner_status(device: str) -> str:
+    """One Vietnamese sentence about the learner's notebook, spoken when a conversation opens."""
+    now = int(time.time())
+    with _db() as con:
+        total, due = con.execute(
+            "SELECT COUNT(*), COALESCE(SUM(due<=?), 0) FROM vocab WHERE device=?", (now, device)).fetchone()
+    if not total:
+        return "Hôm nay mình cùng học những từ tiếng Anh đầu tiên nhé."
+    if due:
+        return f"Bạn đã có {total} từ trong sổ, hôm nay có {due} từ cần ôn."
+    return f"Bạn đã có {total} từ trong sổ, hôm nay không có từ nào cần ôn. Giỏi lắm!"
 
 
 def _deck_for(con: sqlite3.Connection, device: str):
@@ -229,6 +274,8 @@ async def run_tool(device: str, name: str, args: dict) -> str:
             return await loop.run_in_executor(None, _start_offline, device)
         if name == "learn_new_words":
             return await loop.run_in_executor(None, _learn_new_words, device, 1)
+        if name == "finish_lesson":
+            return await loop.run_in_executor(None, _finish_lesson, device)
         if name == "grade_word":
             return await loop.run_in_executor(None, _grade_word, device, args["word"], args["quality"])
         return f"Unknown tool {name}."
