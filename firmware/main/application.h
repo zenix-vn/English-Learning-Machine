@@ -115,6 +115,11 @@ public:
     void InvokeText(const std::string& text);
     // Stops speaking and closes the audio channel; the device returns to idle.
     void EndConversation();
+    // Settings > Device > hold: asks the server for a newer firmware now and installs it (the device restarts).
+    // Tells the learner on the home screen when there is nothing to install or the server cannot be reached.
+    void CheckForUpdate();
+    // True while the connection to the server is open (a conversation can continue without reconnecting).
+    bool IsAudioChannelOpened() const { return protocol_ && protocol_->IsAudioChannelOpened(); }
     // Reads the activation code aloud again (the home module calls it when the learner clicks on the code screen).
     void ReadActivationCode(const std::string& code) { ShowActivationCode(code, ""); }
     bool UpgradeFirmware(const std::string& url, const std::string& version = "");
@@ -157,6 +162,7 @@ private:
 
     bool has_server_time_ = false;
     bool startup_completed_ = false;
+    bool connecting_spoken_ = false;        // Sophia has said "connecting" in this start-up
     bool pending_startup_wake_word_hint_ = false;
     bool aborted_ = false;
     bool assets_version_checked_ = false;

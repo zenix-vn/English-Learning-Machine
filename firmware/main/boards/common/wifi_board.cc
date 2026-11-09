@@ -26,8 +26,9 @@
 
 static const char *TAG = "WifiBoard";
 
-// Connection timeout in seconds
-static constexpr int CONNECT_TIMEOUT_SEC = 60;
+// Connection timeout in seconds. Short on purpose: a device taken somewhere without its saved network
+// should reach the Wi-Fi setup screen (and its offline-study option) quickly.
+static constexpr int CONNECT_TIMEOUT_SEC = 15;
 
 WifiBoard::WifiBoard() {
     // Create connection timeout timer
@@ -167,10 +168,10 @@ void WifiBoard::OnWifiConnectTimeout(void* arg) {
     ESP_LOGW(TAG, "WiFi connection timeout, entering config mode");
 
     WifiManager::GetInstance().StopStation();
-    board->StartWifiConfigMode();
+    board->StartWifiConfigMode(true);
 }
 
-void WifiBoard::StartWifiConfigMode() {
+void WifiBoard::StartWifiConfigMode(bool network_not_found) {
     in_config_mode_ = true;
     // Transition to wifi configuring state
     Application::GetInstance().SetDeviceState(kDeviceStateWifiConfiguring);
@@ -180,7 +181,7 @@ void WifiBoard::StartWifiConfigMode() {
     wifi_manager.StartConfigAp();
 
     // Show config prompt after a short delay
-    Application::GetInstance().Schedule([&wifi_manager]() {
+    Application::GetInstance().Schedule([&wifi_manager, network_not_found]() {
         std::string hint = Lang::Strings::CONNECT_TO_HOTSPOT;
         hint += wifi_manager.GetApSsid();
         hint += Lang::Strings::ACCESS_VIA_BROWSER;
@@ -189,7 +190,8 @@ void WifiBoard::StartWifiConfigMode() {
 #if CONFIG_BOARD_TYPE_ENGLISH_LEARNER
         home::HomeScreen::GetInstance().ShowWifiSetup(wifi_manager.GetApSsid(), wifi_manager.GetApWebUrl());
 #endif
-        Application::GetInstance().Alert(Lang::Strings::WIFI_CONFIG_MODE, hint.c_str(), "gear", Lang::Sounds::OGG_WIFICONFIG);
+        Application::GetInstance().Alert(Lang::Strings::WIFI_CONFIG_MODE, hint.c_str(), "gear",
+                                            network_not_found ? Lang::Sounds::OGG_NO_WIFI : Lang::Sounds::OGG_WIFICONFIG);
     });
 #elif CONFIG_USE_ESP_BLUFI_WIFI_PROVISIONING
     auto &blufi = Blufi::GetInstance();

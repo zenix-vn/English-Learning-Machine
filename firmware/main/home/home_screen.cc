@@ -11,7 +11,11 @@
 #include <ctime>
 #include <string>
 
+#include <esp_app_desc.h>
+#include <esp_netif.h>
+
 #include "application.h"
+#include "system_info.h"
 #include "assets/lang_config.h"
 #include "audio_codec.h"
 #include "board.h"
@@ -19,6 +23,7 @@
 #include "home_images.h"
 #include "mascot.h"
 #include "settings.h"
+#include "boards/common/wifi_board.h"
 #include "ui_kit.h"
 #if CONFIG_EL_OFFLINE_STUDY
 #include "offline/study.h"
@@ -53,13 +58,13 @@ constexpr int kRowGap = 10;                        // between the rows of tiles
 // the lifted tile of the first row is still inside it (anything outside is not redrawn and looked cut off).
 constexpr int kLiftPad = 10;
 constexpr int kGridY = 196;                        // top of the first row of tiles
-constexpr int kSettingsBtnY = 828, kSettingsBtnH = 56;
-constexpr int kFooterH = 44;
+constexpr int kSettingsBtnY = 780, kSettingsBtnH = 56;
+constexpr int kSetY0 = 88, kSetStep = 112, kSetRowH = 98;       // settings rows (7 of them fit above the legend)
 
 // Tile row geometry for the two layouts (rim = the darker edge under each tile)
-constexpr int kGridW = (kW - 2 * kPad - kTileGap) / 2, kGridH = 140, kGridRim = 6;      // 3 rows of 2 tiles and one wide tile
-// List layout: one full-width row per item with a small gap between rows (7 programmes + the settings row)
-constexpr int kListRowH = 78, kListGap = 8, kListStep = kListRowH + kListGap;
+constexpr int kGridW = (kW - 2 * kPad - kTileGap) / 2, kGridH = 128, kGridRim = 6;      // 3 rows of 2 tiles and one wide tile
+// List layout: one card per item, inset like the grid (7 programmes + the settings row)
+constexpr int kListRowH = 62, kListGap = 8, kListStep = kListRowH + kListGap, kListRim = 5;
 
 struct TileSpec {
     const char* name;
@@ -73,10 +78,23 @@ const TileSpec kTileSpecs[] = {
     {"Học từ mới", icon::kBook, kBlue, kBlueDeep, 0x60A5FA},
     {"Ôn tập", icon::kReview, kOrange, kOrangeDeep, 0xFDA55A},
     {"Từ điển", icon::kSearch, kTeal, kTealDeep, 0x5EEAD4},
-    {"Trò chuyện", icon::kChat, kPurple, kPurpleDeep, 0xB69CFB},
+    {"Học Online", icon::kGradCap, kPurple, kPurpleDeep, 0xB69CFB},
     {"Phát âm", icon::kMic, kPink, kPinkDeep, 0xF783B9},
     {"Thành tích", icon::kTrophy, kGreen, kGreenDeep, 0x5BE08E},
     {"Phiên dịch", icon::kLanguages, 0x4F46E5, 0x3730A3, 0x818CF8},      // Vietnamese <-> English with the AI
+    {"Trò chuyện", icon::kChat, 0x0891B2, 0x155E75, 0x67E8F9},          // free conversation with the AI
+};
+
+// Settings rows
+struct SetSpec {
+    uint32_t icon;
+    const char* name;
+    uint32_t color;
+};
+const SetSpec kSetSpecs[] = {
+    {icon::kGrid, "Giao diện", kBlue},     {icon::kVolume, "Âm lượng", kOrange}, {icon::kSun, "Độ sáng", kAmber},
+    {icon::kWifi, "Kết nối Wi-Fi", kPink}, {icon::kSync, "Từ vựng", kTeal},      {icon::kSettings, "Thiết bị", 0x475569},
+    {icon::kBack, "Quay lại", kPurple},
 };
 
 const char* Greeting() {
@@ -251,20 +269,12 @@ void HomeScreen::Build() {
     Label(settings_btn_, f.xb22, kInk, "Cài đặt");
     BuildTiles();                           // lays out the settings button for the current layout too
 
-    // ---- control hints
-    lv_obj_t* footer = Box(root_, kW - 2 * kPad, kFooterH, kWhite, kFooterH / 2);
-    lv_obj_set_pos(footer, kPad, kH - kPad - kFooterH);
-    lv_obj_set_flex_flow(footer, LV_FLEX_FLOW_ROW);
-    lv_obj_set_flex_align(footer, LV_FLEX_ALIGN_SPACE_EVENLY, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
-    struct HintSpec { Glyph glyph; const char* text; };
-    const HintSpec hints[] = {{Glyph::kClick, "Chọn"}, {Glyph::kDouble, "Lùi"}, {Glyph::kHold, "Vào"}};
-    for (const auto& h : hints) {
-        lv_obj_t* item = Box(footer, LV_SIZE_CONTENT, LV_SIZE_CONTENT, kWhite, 0, LV_OPA_TRANSP);
-        lv_obj_set_flex_flow(item, LV_FLEX_FLOW_ROW);
-        lv_obj_set_flex_align(item, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
-        lv_obj_set_style_pad_column(item, 8, 0);
-        GlyphView(item, h.glyph, kInk);
-        Label(item, f.sb17, kMuted, h.text);
+    // ---- button legend: the main action names the selected item ("Mở Học từ mới")
+    {
+        const Hint hints[] = {{Glyph::kClick, "Kế tiếp"}, {Glyph::kDouble, "Trước"}, {Glyph::kHold, "Mở", 0, true}};
+        lv_obj_t* labels[3] = {};
+        FillHintBar(HintBar(root_), hints, 3, labels);
+        hold_label_ = labels[2];
     }
 
     // ---- toast (hidden)
@@ -272,18 +282,20 @@ void HomeScreen::Build() {
     lv_obj_set_style_pad_hor(toast_, 20, 0);
     toast_label_ = Label(toast_, f.sb19, kWhite, "");
     lv_obj_center(toast_label_);
-    lv_obj_align(toast_, LV_ALIGN_BOTTOM_MID, 0, -(kPad + kFooterH + 16));
+    lv_obj_align(toast_, LV_ALIGN_BOTTOM_MID, 0, -(kPad + kHintBarH + 16));
     SetShown(toast_, false);
 
     BuildSettings();
+    BuildInfo();
     BuildChat();
     setup_.Build();
     Focus(0);
     UpdateClock();
     SetShown(root_, false);
     SetShown(set_root_, false);
+    SetShown(info_root_, false);
     SetShown(chat_root_, false);
-    lv_timer_create(OnHomeTimer, 300, this);
+    lv_timer_create(OnHomeTimer, 100, this);      // state changes switch pages within 100 ms
     lv_timer_create(OnHomeAnim, 150, this);
     ESP_LOGI(TAG, "home screen built, layout %d", static_cast<int>(layout_));
 }
@@ -301,33 +313,35 @@ void HomeScreen::BuildTiles() {
             const int x = wide ? kPad : kPad + (i % 2) * (kGridW + kTileGap);
             const int w = wide ? kW - 2 * kPad : kGridW;
             const int y = kLiftPad + (i / 2) * (kGridH + kGridRim + kRowGap);
-            lv_obj_set_pos(Box(tiles_, w, kGridH, spec.deep, 28), x, y + kGridRim);      // edge under the tile
+            // Flat colour on a darker edge: reads at a glance and draws faster than a gradient.
+            tile_rim_[i] = Box(tiles_, w, kGridH, spec.deep, 28);                // edge under the tile
+            lv_obj_set_pos(tile_rim_[i], x, y + kGridRim);
             t = Box(tiles_, w, kGridH, spec.color, 28);
             lv_obj_set_pos(t, x, y);
             tile_y_[i] = y;
-            SetGradient(t, spec.light, spec.color, false);                    // light at the top, deep at the bottom
             if (wide) {                                                       // icon on the left, name beside it
-                lv_obj_t* disc = Box(t, 76, 76, kWhite, LV_RADIUS_CIRCLE, 56);
+                lv_obj_t* disc = Box(t, 72, 72, kWhite, LV_RADIUS_CIRCLE, 56);
                 lv_obj_align(disc, LV_ALIGN_LEFT_MID, 28, 0);
                 lv_obj_center(Label(disc, f.icon40, kWhite, Utf8(spec.icon)));
-                lv_obj_align(Label(t, f.xb26, kWhite, spec.name), LV_ALIGN_LEFT_MID, 122, 0);
+                lv_obj_align(Label(t, f.xb26, kWhite, spec.name), LV_ALIGN_LEFT_MID, 118, 0);
             } else {
-                lv_obj_t* disc = Box(t, 66, 66, kWhite, LV_RADIUS_CIRCLE, 56);       // 22 % white
-                lv_obj_align(disc, LV_ALIGN_CENTER, 0, -26);
+                lv_obj_t* disc = Box(t, 62, 62, kWhite, LV_RADIUS_CIRCLE, 56);       // 22 % white
+                lv_obj_align(disc, LV_ALIGN_CENTER, 0, -22);
                 lv_obj_center(Label(disc, f.icon40, kWhite, Utf8(spec.icon)));
-                lv_obj_align(Label(t, f.xb22, kWhite, spec.name), LV_ALIGN_CENTER, 0, 44);
+                lv_obj_align(Label(t, f.xb22, kWhite, spec.name), LV_ALIGN_CENTER, 0, 40);
             }
-        } else {                    // full width, a gap between rows, deep colour on the left fading to light
-            lv_obj_set_pos(Box(tiles_, kW, kListRowH, spec.deep, 0), 0, kLiftPad + i * kListStep + 5);   // edge under the row
-            t = Box(tiles_, kW, kListRowH, spec.color, 0);
-            SetGradient(t, spec.color, spec.light, true);
-            lv_obj_set_pos(t, 0, kLiftPad + i * kListStep);
-            tile_y_[i] = kLiftPad + i * kListStep;
-            lv_obj_t* disc = Box(t, 60, 60, kWhite, LV_RADIUS_CIRCLE, 56);
-            lv_obj_align(disc, LV_ALIGN_LEFT_MID, 20, 0);
-            lv_obj_center(Label(disc, f.icon40, kWhite, Utf8(spec.icon)));
-            lv_obj_t* name = Label(t, f.xb26, kWhite, spec.name);
-            lv_obj_align(name, LV_ALIGN_LEFT_MID, 98, 0);
+        } else {                    // one card per row, inset like the grid
+            const int y = kLiftPad + i * kListStep;
+            tile_rim_[i] = Box(tiles_, kW - 2 * kPad, kListRowH, spec.deep, 22);   // edge under the row
+            lv_obj_set_pos(tile_rim_[i], kPad, y + kListRim);
+            t = Box(tiles_, kW - 2 * kPad, kListRowH, spec.color, 22);
+            lv_obj_set_pos(t, kPad, y);
+            tile_y_[i] = y;
+            lv_obj_t* disc = Box(t, 46, 46, kWhite, LV_RADIUS_CIRCLE, 56);
+            lv_obj_align(disc, LV_ALIGN_LEFT_MID, 14, 0);
+            lv_obj_center(Label(disc, f.icon26, kWhite, Utf8(spec.icon)));
+            lv_obj_t* name = Label(t, f.xb22, kWhite, spec.name);
+            lv_obj_align(name, LV_ALIGN_LEFT_MID, 80, 0);
         }
         tile_[i] = t;
 
@@ -337,7 +351,7 @@ void HomeScreen::BuildTiles() {
         badge_label_[i] = Label(badge_[i], f.xb20, spec.deep, std::to_string(badge_count_[i]));
         lv_obj_center(badge_label_[i]);
         if (grid) lv_obj_align(badge_[i], LV_ALIGN_TOP_RIGHT, -10, 10);
-        else lv_obj_align(badge_[i], LV_ALIGN_RIGHT_MID, -22, 0);
+        else lv_obj_align(badge_[i], LV_ALIGN_RIGHT_MID, -16, 0);
         SetShown(badge_[i], badge_count_[i] > 0);
     }
 
@@ -345,26 +359,16 @@ void HomeScreen::BuildTiles() {
     if (settings_btn_) {
         const lv_flex_align_t main = grid ? LV_FLEX_ALIGN_CENTER : LV_FLEX_ALIGN_START;
         lv_obj_set_flex_align(settings_btn_, main, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
-        lv_obj_set_style_pad_left(settings_btn_, grid ? 0 : 36, 0);
-        if (grid) {
-            settings_y_ = kSettingsBtnY;
-            lv_obj_set_size(settings_btn_, kW - 2 * kPad, kSettingsBtnH);
-            lv_obj_set_pos(settings_btn_, kPad, settings_y_);
-            lv_obj_set_style_radius(settings_btn_, kSettingsBtnH / 2, 0);
-            SetGradient(settings_btn_, kWhite, kWhite, false);
-            lv_obj_set_size(settings_under_, kW - 2 * kPad, kSettingsBtnH);
-            lv_obj_set_pos(settings_under_, kPad, settings_y_ + 5);
-            lv_obj_set_style_radius(settings_under_, kSettingsBtnH / 2, 0);
-        } else {
-            settings_y_ = kGridY + kTiles * kListStep;
-            lv_obj_set_size(settings_btn_, kW, kListRowH);
-            lv_obj_set_pos(settings_btn_, 0, settings_y_);
-            lv_obj_set_style_radius(settings_btn_, 0, 0);
-            SetGradient(settings_btn_, kWhite, 0xEADFCB, true);
-            lv_obj_set_size(settings_under_, kW, kListRowH);
-            lv_obj_set_pos(settings_under_, 0, settings_y_ + 5);
-            lv_obj_set_style_radius(settings_under_, 0, 0);
-        }
+        lv_obj_set_style_pad_left(settings_btn_, grid ? 0 : 28, 0);
+        const int h = grid ? kSettingsBtnH : kListRowH;
+        const int radius = grid ? kSettingsBtnH / 2 : 22;
+        settings_y_ = grid ? kSettingsBtnY : kGridY + kTiles * kListStep;
+        lv_obj_set_size(settings_btn_, kW - 2 * kPad, h);
+        lv_obj_set_pos(settings_btn_, kPad, settings_y_);
+        lv_obj_set_style_radius(settings_btn_, radius, 0);
+        lv_obj_set_size(settings_under_, kW - 2 * kPad, h);
+        lv_obj_set_pos(settings_under_, kPad, settings_y_ + 5);
+        lv_obj_set_style_radius(settings_under_, radius, 0);
     }
     Focus(focus_);
 }
@@ -417,46 +421,26 @@ void HomeScreen::BuildChat() {
     lv_obj_align(chat_user_, LV_ALIGN_TOP_LEFT, 16, 8);
     SetShown(chat_user_box_, false);
 
-    lv_obj_t* bot_under = Box(chat_root_, tw, 268, kRim, 26);   // paper edge under the answer card
-    lv_obj_set_pos(bot_under, kPad, 500 + 5);
-    chat_bot_box_ = Box(chat_root_, tw, 268, kWhite, 26);
-    lv_obj_set_pos(chat_bot_box_, kPad, 500);
+    // the answer card fills the space down to the legend (there is no on-screen button: the legend says how to leave)
+    constexpr int kBotY = 500, kBotH = kHintBarY - 20 - kBotY;
+    lv_obj_t* bot_under = Box(chat_root_, tw, kBotH, kRim, 26);   // paper edge under the answer card
+    lv_obj_set_pos(bot_under, kPad, kBotY + 5);
+    chat_bot_box_ = Box(chat_root_, tw, kBotH, kWhite, 26);
+    lv_obj_set_pos(chat_bot_box_, kPad, kBotY);
     chat_bot_ = Label(chat_bot_box_, f.sb22, kInk, "");
-    lv_obj_set_size(chat_bot_, tw - 32, 268 - 24);
+    lv_obj_set_size(chat_bot_, tw - 32, kBotH - 24);
     lv_label_set_long_mode(chat_bot_, LV_LABEL_LONG_DOT);
     lv_obj_align(chat_bot_, LV_ALIGN_TOP_LEFT, 16, 12);
 
-    // the exit button and the control legend
-    lv_obj_set_pos(Box(chat_root_, tw, 60, 0x991B1B, 30), kPad, 800 + 5);        // darker edge under the button
-    lv_obj_t* exit_btn = Box(chat_root_, tw, 60, kRed, 30);
-    lv_obj_set_pos(exit_btn, kPad, 800);
-    SetRing(exit_btn, true, 4);
-    lv_obj_set_flex_flow(exit_btn, LV_FLEX_FLOW_ROW);
-    lv_obj_set_flex_align(exit_btn, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
-    lv_obj_set_style_pad_column(exit_btn, 12, 0);
-    Label(exit_btn, f.icon26, kWhite, Utf8(icon::kClose));
-    Label(exit_btn, f.xb26, kWhite, "Thoát trò chuyện");
-
-    lv_obj_t* footer = Box(chat_root_, tw, kFooterH, kWhite, kFooterH / 2);
-    lv_obj_set_pos(footer, kPad, kH - kPad - kFooterH);
-    lv_obj_set_flex_flow(footer, LV_FLEX_FLOW_ROW);
-    lv_obj_set_flex_align(footer, LV_FLEX_ALIGN_SPACE_EVENLY, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
-    struct HintSpec { Glyph glyph; const char* text; };
-    const HintSpec hints[] = {{Glyph::kClick, "Nói / dừng"}, {Glyph::kDouble, "Thoát"}, {Glyph::kHold, "Thoát"}};
-    for (const auto& h : hints) {
-        lv_obj_t* item = Box(footer, LV_SIZE_CONTENT, LV_SIZE_CONTENT, kWhite, 0, LV_OPA_TRANSP);
-        lv_obj_set_flex_flow(item, LV_FLEX_FLOW_ROW);
-        lv_obj_set_flex_align(item, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
-        lv_obj_set_style_pad_column(item, 8, 0);
-        GlyphView(item, h.glyph, kInk);
-        Label(item, f.sb17, kMuted, h.text);
-    }
+    const Hint hints[] = {{Glyph::kClick, "Nói / Dừng", kPurple, true}, {Glyph::kHold, "Giữ để thoát", kRed}};
+    FillHintBar(HintBar(chat_root_), hints, 2);
 }
 
 // state: a DeviceState value
 void HomeScreen::UpdateChat(int state) {
     chat_state_ = state;
-    const char* text = "Sẵn sàng";
+    // Idle has two meanings: waiting for Sophia's first words, or paused by the learner.
+    const char* text = chat_greeted_ ? "Đã dừng. Bấm để nói" : "Sophia đang chuẩn bị...";
     uint32_t color = kFaint;
     switch (state) {
         case kDeviceStateConnecting: text = "Đang kết nối..."; color = kAmber; break;
@@ -475,7 +459,8 @@ void HomeScreen::UpdateChat(int state) {
         const char* hint = state == kDeviceStateListening
                                ? (chat_translate_ ? "Nói tiếng Việt, mình dịch sang tiếng Anh. Nói tiếng Anh, mình dịch sang tiếng Việt."
                                                   : "Hãy nói gì đó với Sophia nhé!")
-                               : "Sophia đang chuẩn bị...";
+                               : state == kDeviceStateIdle && chat_greeted_ ? "Bấm nút để nói tiếp nhé!"
+                                                                            : "Sophia đang chuẩn bị...";
         lv_label_set_text(chat_bot_, hint);
         lv_obj_set_style_text_color(chat_bot_, Hex(kFaint), 0);
     }
@@ -493,9 +478,12 @@ void HomeScreen::SetChatText(const char* role, const char* content) {
         SetShown(chat_user_box_, true);
         UpdateChat(chat_state_);
     } else if (std::string(role) == "assistant") {
+        // "your turn" cue of the interpreter (backend INTERPRETER_CUE): heard, not shown, so the panel keeps only
+        // the translation
+        if (text == "Mời bạn nói tiếp.") return;
         if (!chat_bot_text_.empty()) chat_bot_text_ += " ";
         chat_bot_text_ += text;
-        while (chat_bot_text_.size() > 330) {          // keep the latest sentences; the panel holds about 9 lines
+        while (chat_bot_text_.size() > 400) {          // keep the latest sentences; the panel holds about 11 lines
             const size_t cut = chat_bot_text_.find(". ");
             if (cut == std::string::npos) break;
             chat_bot_text_.erase(0, cut + 2);
@@ -503,6 +491,18 @@ void HomeScreen::SetChatText(const char* role, const char* content) {
         lv_label_set_text(chat_bot_, chat_bot_text_.c_str());
         lv_obj_set_style_text_color(chat_bot_, Hex(kInk), 0);
     }
+}
+
+void HomeScreen::SetUpgradeProgress(int percent) {
+    if (!root_) return;
+    DisplayLockGuard lock(Board::GetInstance().GetDisplay());
+    setup_.SetUpgrade(percent);
+}
+
+void HomeScreen::Notify(const char* text) {
+    if (!root_) return;
+    DisplayLockGuard lock(Board::GetInstance().GetDisplay());
+    Toast(text);
 }
 
 void HomeScreen::ClearChatText() {
@@ -525,46 +525,32 @@ void HomeScreen::BuildSettings() {
     lv_obj_t* title = Label(set_root_, f.xb32, kInk, "Cài đặt");
     lv_obj_set_pos(title, kPad + 40, 8);
 
-    struct RowSpec { uint32_t icon; const char* name; uint32_t color, deep; };
-    const RowSpec specs[kSettingRows] = {
-        {icon::kGrid, "Giao diện", kBlue, kBlueDeep},
-        {icon::kVolume, "Âm lượng", kOrange, kOrangeDeep},
-        {icon::kSun, "Độ sáng", kAmber, 0xB45309},
-        {icon::kSync, "Từ vựng", kTeal, kTealDeep},
-        {icon::kBack, "Quay lại", kPurple, kPurpleDeep},
-    };
-    const int rowH = 112, step = 132, y0 = 90, w = kW - 2 * kPad;
+    const auto& specs = kSetSpecs;
+    const int rowH = kSetRowH, step = kSetStep, y0 = kSetY0, w = kW - 2 * kPad;
     for (int i = 0; i < kSettingRows; ++i) {
         lv_obj_t* r = RaisedCard(set_root_, kPad, y0 + i * step, w, rowH, kWhite, kRim, 5, 26);
         set_row_[i] = r;
-        lv_obj_t* disc = Box(r, 64, 64, specs[i].color, LV_RADIUS_CIRCLE);
-        lv_obj_set_pos(disc, 16, 16);
+        set_rim_[i] = lv_obj_get_child(set_root_, lv_obj_get_index(r) - 1);     // RaisedCard puts the edge just before
+        lv_obj_t* disc = set_disc_[i] = Box(r, 64, 64, specs[i].color, LV_RADIUS_CIRCLE);
+        lv_obj_set_pos(disc, 16, (rowH - 64) / 2);
         set_icon_[i] = Label(disc, f.icon40, kWhite, Utf8(specs[i].icon));
         lv_obj_center(set_icon_[i]);
         lv_obj_t* name = Label(r, f.xb26, kInk, specs[i].name);
-        lv_obj_set_pos(name, 96, 4);
+        lv_obj_set_pos(name, 96, 2);
         set_value_[i] = Label(r, f.sb22, kMuted, "");
-        lv_obj_set_pos(set_value_[i], 96, 44);
+        lv_obj_set_pos(set_value_[i], 96, 38);
         if (i == 1 || i == 2) {
             lv_obj_t* track = Box(r, w - 32, 14, kRim, 7);
-            lv_obj_set_pos(track, 16, 88);
+            lv_obj_set_pos(track, 16, 76);
             set_bar_[i] = Box(track, 0, 14, specs[i].color, 7);
         }
     }
 
-    lv_obj_t* footer = Box(set_root_, kW - 2 * kPad, kFooterH, kWhite, kFooterH / 2);
-    lv_obj_set_pos(footer, kPad, kH - kPad - kFooterH);
-    lv_obj_set_flex_flow(footer, LV_FLEX_FLOW_ROW);
-    lv_obj_set_flex_align(footer, LV_FLEX_ALIGN_SPACE_EVENLY, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
-    struct HintSpec { Glyph glyph; const char* text; };
-    const HintSpec hints[] = {{Glyph::kClick, "Chọn"}, {Glyph::kDouble, "Lùi"}, {Glyph::kHold, "Đổi"}};
-    for (const auto& h : hints) {
-        lv_obj_t* item = Box(footer, LV_SIZE_CONTENT, LV_SIZE_CONTENT, kWhite, 0, LV_OPA_TRANSP);
-        lv_obj_set_flex_flow(item, LV_FLEX_FLOW_ROW);
-        lv_obj_set_flex_align(item, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
-        lv_obj_set_style_pad_column(item, 8, 0);
-        GlyphView(item, h.glyph, kInk);
-        Label(item, f.sb17, kMuted, h.text);
+    {
+        const Hint hints[] = {{Glyph::kClick, "Kế tiếp"}, {Glyph::kDouble, "Trước"}, {Glyph::kHold, "Đổi", 0, true}};
+        lv_obj_t* labels[3] = {};
+        FillHintBar(HintBar(set_root_), hints, 3, labels);
+        set_hold_label_ = labels[2];
     }
     UpdateSettings();
 }
@@ -578,12 +564,22 @@ void HomeScreen::UpdateSettings() {
     lv_label_set_text(set_value_[0], grid ? "Lưới: 2 cột, 3 hàng" : "Danh sách: mỗi mục 1 hàng");
     lv_label_set_text(set_value_[1], (std::to_string(volume) + "%").c_str());
     lv_label_set_text(set_value_[2], (std::to_string(brightness) + "%").c_str());
-    lv_label_set_text(set_value_[3], "Tải bộ từ mới qua Wi-Fi");
-    lv_label_set_text(set_value_[4], "Về màn hình chính");
+    lv_label_set_text(set_value_[3], Online() ? "Đã kết nối. Giữ để đổi mạng" : "Chưa kết nối. Giữ để cài đặt");
+    lv_label_set_text(set_value_[4], "Tải bộ từ mới qua Wi-Fi");
+    lv_label_set_text(set_value_[5], (std::string("Phiên bản ") + esp_app_get_description()->version).c_str());
+    lv_label_set_text(set_value_[6], "Về màn hình chính");
     const int w = kW - 2 * kPad - 32;
     lv_obj_set_width(set_bar_[1], w * (volume > 100 ? 100 : volume) / 100);
     lv_obj_set_width(set_bar_[2], w * (brightness > 100 ? 100 : brightness) / 100);
-    for (int i = 0; i < kSettingRows; ++i) lv_obj_set_y(set_row_[i], 90 + i * 132 - (i == set_focus_ ? 7 : 0));
+    for (int i = 0; i < kSettingRows; ++i) {
+        const bool on = i == set_focus_;
+        lv_obj_set_y(set_row_[i], kSetY0 + i * kSetStep - (on ? kLift : 0));
+        SetShown(set_rim_[i], on);
+        lv_obj_set_style_bg_color(set_disc_[i], Hex(on ? kSetSpecs[i].color : Mix(kSetSpecs[i].color, kWhite, 45)), 0);
+    }
+    static const char* const kHoldText[kSettingRows] = {"Đổi giao diện", "Đổi âm lượng", "Đổi độ sáng",
+                                                        "Cài Wi-Fi",     "Tải từ vựng",   "Xem thông tin", "Về trang chính"};
+    if (set_hold_label_) lv_label_set_text(set_hold_label_, kHoldText[set_focus_]);
 }
 
 void HomeScreen::ChangeSetting(int row) {
@@ -610,12 +606,25 @@ void HomeScreen::ChangeSetting(int row) {
             break;
         }
         case 3:
+            ConnectWifi();
+            break;
+        case 4:
+            if (!Online()) {
+                Toast("Cần Wi-Fi. Hãy kết nối trước nhé!");
+                Application::GetInstance().PlaySound(Lang::Sounds::OGG_NEED_WIFI);
+                break;
+            }
 #if CONFIG_EL_OFFLINE_STUDY
             offline::OfflineStudy::GetInstance().Start(offline::Mode::kSync);
             RequestRefresh();
 #else
             Toast("Chưa hỗ trợ");
 #endif
+            break;
+        case 5:
+            UpdateInfo();
+            info_open_ = true;
+            RequestRefresh();
             break;
         default:
             OpenSettings(false);
@@ -624,12 +633,86 @@ void HomeScreen::ChangeSetting(int row) {
     UpdateSettings();
 }
 
+// ------------------------------------------------------------ device information
+void HomeScreen::BuildInfo() {
+    const Fonts& f = GetFonts();
+    info_root_ = Box(lv_layer_top(), kW, kH, kBg, 0);
+    lv_obj_set_pos(info_root_, 0, 0);
+    lv_obj_set_pos(Label(info_root_, f.icon26, kInk, Utf8(icon::kBack)), kPad, 24);
+    lv_obj_set_pos(Label(info_root_, f.xb32, kInk, "Thông tin thiết bị"), kPad + 40, 8);
+
+    static const char* const kNames[kInfoRows] = {"Phiên bản", "Mã thiết bị", "Mạng Wi-Fi", "Địa chỉ IP", "Tín hiệu",
+                                                  "Đã chạy"};
+    constexpr int kRowH = 90, kTop = 14, w = kW - 2 * kPad;
+    lv_obj_t* card = RaisedCard(info_root_, kPad, 88, w, kTop * 2 + kInfoRows * kRowH, kWhite, kRim, 5, 26);
+    for (int i = 0; i < kInfoRows; ++i) {
+        const int y = kTop + i * kRowH;
+        if (i > 0) lv_obj_set_pos(Box(card, w - 40, 2, kRim, 1), 20, y - 2);
+        lv_obj_set_pos(Label(card, f.sb19, kFaint, kNames[i]), 22, y + 6);
+        lv_obj_t* v = info_value_[i] = Label(card, f.xb26, kInk, "");
+        lv_obj_set_size(v, w - 44, 36);
+        lv_label_set_long_mode(v, LV_LABEL_LONG_DOT);
+        lv_obj_set_pos(v, 22, y + 36);
+    }
+    const Hint hints[] = {{Glyph::kClick, "Quay lại"}, {Glyph::kHold, "Cập nhật", kBlue, true}};
+    FillHintBar(HintBar(info_root_), hints, 2);
+}
+
+void HomeScreen::UpdateInfo() {
+    auto set = [this](int i, const std::string& text) { lv_label_set_text(info_value_[i], text.c_str()); };
+    set(0, esp_app_get_description()->version);
+    set(1, SystemInfo::GetMacAddress());
+
+    wifi_ap_record_t ap;
+    if (esp_wifi_sta_get_ap_info(&ap) == ESP_OK) {
+        set(2, reinterpret_cast<const char*>(ap.ssid));
+        const char* quality = ap.rssi >= -60 ? "Tốt" : ap.rssi >= -75 ? "Vừa" : "Yếu";
+        set(4, std::string(quality) + " (" + std::to_string(ap.rssi) + " dBm)");
+    } else {
+        set(2, "Chưa kết nối");
+        set(4, "-");
+    }
+    std::string ip = "-";
+    if (esp_netif_t* netif = esp_netif_get_handle_from_ifkey("WIFI_STA_DEF")) {
+        esp_netif_ip_info_t info;
+        if (esp_netif_get_ip_info(netif, &info) == ESP_OK && info.ip.addr != 0) {
+            char buf[16];
+            snprintf(buf, sizeof(buf), IPSTR, IP2STR(&info.ip));
+            ip = buf;
+        }
+    }
+    set(3, ip);
+    const int minutes = static_cast<int>(esp_timer_get_time() / 60000000);
+    set(5, minutes >= 60 ? std::to_string(minutes / 60) + " giờ " + std::to_string(minutes % 60) + " phút"
+                         : std::to_string(minutes) + " phút");
+}
+
+// The server can only be reached with a network, and not while the device is still in the offline home screen.
+bool HomeScreen::Online() const { return !offline_home_ && WifiConnected(); }
+
+void HomeScreen::EnterOfflineHome() {
+    offline_home_ = true;
+    if (!root_) return;
+    DisplayLockGuard lock(Board::GetInstance().GetDisplay());
+    RequestRefresh();
+    Application::GetInstance().PlaySound(Lang::Sounds::OGG_OFFLINE);       // Sophia explains what still works
+}
+
+// Back to the Wi-Fi setup (hotspot + phone page). Leaves the offline home; the setup screen has its own way back.
+void HomeScreen::ConnectWifi() {
+    offline_home_ = false;
+    settings_open_ = false;
+    static_cast<WifiBoard*>(&Board::GetInstance())->EnterWifiConfigMode();
+    RequestRefresh();
+}
+
 void HomeScreen::OpenSettings(bool open) {
     if (settings_open_ && !open) {          // leaving: save the brightness chosen while the screen was open
         Settings display("display", true);
         display.SetInt("brightness", Board::GetInstance().GetBacklight()->user_brightness());
     }
     settings_open_ = open;
+    if (!open) info_open_ = false;
     if (open) {
         set_focus_ = 0;
         UpdateSettings();
@@ -639,7 +722,7 @@ void HomeScreen::OpenSettings(bool open) {
 
 // ---------------------------------------------------------------- state
 HomeScreen::Mode HomeScreen::Target() const {
-    if (visible_) return settings_open_ ? Mode::kSettings : Mode::kHome;
+    if (visible_) return !settings_open_ ? Mode::kHome : info_open_ ? Mode::kInfo : Mode::kSettings;
     if (chat_shown_) return Mode::kChat;
     return setup_target_;                       // the first-run pages (none once the device is running)
 }
@@ -648,6 +731,7 @@ void HomeScreen::ShowTarget() {
     const Mode t = Target();
     SetShown(root_, t == Mode::kHome);
     SetShown(set_root_, t == Mode::kSettings);
+    SetShown(info_root_, t == Mode::kInfo);
     SetShown(chat_root_, t == Mode::kChat);
     setup_.ShowPage(t == Mode::kSplash ? SetupScreen::Page::kSplash
                     : t == Mode::kWifi ? SetupScreen::Page::kWifi
@@ -728,16 +812,21 @@ void HomeScreen::UpdateState() {
         case kDeviceStateListening:
         case kDeviceStateSpeaking:
         case kDeviceStateNotifying:
-            chat_ = true;           // a tile, the wake word or the server started a conversation
+            if (!chat_) StartChatWait();    // the wake word or the server started a conversation
+            chat_ = true;
             idle_since_us_ = 0;
+            if (state == kDeviceStateSpeaking || state == kDeviceStateListening) chat_greeted_ = true;
             break;
         case kDeviceStateIdle:
             if (chat_) {
                 const int64_t now = esp_timer_get_time();
                 if (idle_since_us_ == 0) idle_since_us_ = now;
-                if (now - idle_since_us_ > 8 * 1000 * 1000) {
+                // Paused (or the connection dropped): stay on the conversation so a press continues it; go home only
+                // after a long quiet spell. A press or a hold is the normal way out.
+                if (now - idle_since_us_ > 90 * 1000 * 1000) {
                     chat_ = false;
                     chat_translate_ = false;
+                    chat_open_text_.clear();
                     idle_since_us_ = 0;
                 }
             }
@@ -746,9 +835,13 @@ void HomeScreen::UpdateState() {
             break;
     }
     // first-run pages: start-up, Wi-Fi setup, waiting for activation
+    // The offline home screen lasts only while the device waits for the network (starting / Wi-Fi setup)
+    const bool waiting_for_network = state == kDeviceStateStarting || state == kDeviceStateWifiConfiguring;
+    if (!waiting_for_network) offline_home_ = false;
+    const bool offline_home = offline_home_;
     setup_target_ = Mode::kNone;
     const char* splash = nullptr;
-    if (!offline) {
+    if (!offline && !offline_home) {
         switch (state) {
             case kDeviceStateWifiConfiguring: setup_target_ = Mode::kWifi; break;
             case kDeviceStateActivating:
@@ -765,7 +858,7 @@ void HomeScreen::UpdateState() {
         splash_text_ = splash;
         setup_.SetSplashText(splash_text_);
     }
-    const bool show = state == kDeviceStateIdle && !chat_ && !offline;
+    const bool show = (state == kDeviceStateIdle || offline_home) && !chat_ && !offline;
     const bool chat_show = chat_ && !offline && !show;
     if (chat_show && (chat_state_ != static_cast<int>(state) || !chat_shown_)) UpdateChat(static_cast<int>(state));
     chat_shown_ = chat_show;
@@ -793,24 +886,35 @@ void HomeScreen::RefreshNow() {
     ShowTarget();
 }
 
-// Selected item: lifted off the page. The item moves up a few pixels, which uncovers the darker edge that sits under
-// it; it is also moved in front of its neighbours. (Shadows and scaling were tried and
-// overflowed a task stack of the software renderer.)
-void HomeScreen::Mark(lv_obj_t* o, int base_y, bool on) {
+// Selected item: raised off the page. It moves up a few pixels and its darker edge shows under it; the other items
+// lie flat (no edge). Only positions and colours change, which the renderer handles cheaply. (Shadows and scaling
+// were tried and overflowed a task stack of the software renderer.)
+void HomeScreen::Mark(lv_obj_t* o, lv_obj_t* rim, int base_y, bool on) {
     if (!o) return;
-    lv_obj_set_y(o, base_y - (on ? 6 : 0));
-    if (on && o != settings_btn_) lv_obj_move_foreground(o);
+    lv_obj_set_y(o, base_y - (on ? kLift : 0));
+    SetShown(rim, on);
 }
 
 void HomeScreen::Focus(int index) {
     focus_ = (index + kItems) % kItems;
-    for (int i = 0; i < kTiles; ++i) Mark(tile_[i], tile_y_[i], i == focus_);
-    Mark(settings_btn_, settings_y_, focus_ == kTiles);
+    for (int i = 0; i < kTiles; ++i) {
+        const bool on = i == focus_;
+        Mark(tile_[i], tile_rim_[i], tile_y_[i], on);
+        // full colour on the selected tile; the others fade a little towards the page
+        if (tile_[i]) lv_obj_set_style_bg_color(tile_[i], Hex(on ? kTileSpecs[i].color : Mix(kTileSpecs[i].color, kBg, kFadePct)), 0);
+    }
+    Mark(settings_btn_, settings_under_, settings_y_, focus_ == kTiles);
+    // the legend says what a hold opens, so the child never has to guess
+    if (hold_label_) {
+        const char* name = focus_ < kTiles ? kTileSpecs[focus_].name : "Cài đặt";
+        lv_label_set_text(hold_label_, (std::string("Mở ") + name).c_str());
+    }
 }
 
 void HomeScreen::Toast(const char* text) {
     lv_label_set_text(toast_label_, text);
-    lv_obj_align(toast_, LV_ALIGN_BOTTOM_MID, 0, -(kPad + kFooterH + 16));
+    lv_obj_set_parent(toast_, info_open_ ? info_root_ : settings_open_ ? set_root_ : root_);      // separate layers
+    lv_obj_align(toast_, LV_ALIGN_BOTTOM_MID, 0, -(kPad + kHintBarH + 16));
     SetShown(toast_, true);
     if (toast_timer_) lv_timer_delete(toast_timer_);
     toast_timer_ = lv_timer_create(OnHomeToastTimer, 2500, this);
@@ -830,16 +934,28 @@ void HomeScreen::Open(int index) {
         case 2: offline::OfflineStudy::GetInstance().Start(offline::Mode::kDict); break;
         case 5: offline::OfflineStudy::GetInstance().Start(offline::Mode::kStats); break;
 #endif
-        case 3:     // talk with the tutor on the server
+        case 3:     // Học Online: the lessons of the programme, limited to learning English
         case 4:     // pronunciation practice with the tutor
         case 6:     // interpreter: the AI translates every sentence, Vietnamese <-> English
+        case 7:     // Trò chuyện: free conversation, its own model and prompt on the server
+            if (!Online()) {
+                Toast("Cần Wi-Fi. Vào Cài đặt để kết nối!");
+                Application::GetInstance().PlaySound(Lang::Sounds::OGG_NEED_WIFI);
+                return;
+            }
             chat_ = true;
             chat_translate_ = index == 6;
+            StartChatWait();
             idle_since_us_ = 0;
             RequestRefresh();       // starts the transition to the chat screen (in the LVGL task)
-            Application::GetInstance().InvokeText(index == 3   ? "Sophia"
-                                                  : index == 6 ? "Chế độ phiên dịch."
-                                                               : "Mình muốn luyện phát âm.");
+            // Sophia speaks at once, from the firmware: "wait a moment, I am connecting". The server opens with
+            // its own greeting and the learner's status once the connection is up.
+            Application::GetInstance().PlaySound(Lang::Sounds::OGG_LOADING);
+            chat_open_text_ = index == 3   ? "Chế độ học online."
+                              : index == 6 ? "Chế độ phiên dịch."
+                              : index == 7 ? "Chế độ trò chuyện."
+                                           : "Mình muốn luyện phát âm.";
+            Application::GetInstance().InvokeText(chat_open_text_);
             return;
         default:
             Toast("Sắp có!");
@@ -857,6 +973,11 @@ bool HomeScreen::OnClick() {
         return true;
     }
     if (visible_) {
+        if (info_open_) {               // any press closes the information page
+            info_open_ = false;
+            RequestRefresh();
+            return true;
+        }
         if (settings_open_) {
             set_focus_ = (set_focus_ + 1) % kSettingRows;
             UpdateSettings();
@@ -866,16 +987,58 @@ bool HomeScreen::OnClick() {
         return true;
     }
     if (chat_) {
-        Application::GetInstance().ToggleChatState();   // start / stop talking
+        ChatPress();
         return true;
     }
     return false;
+}
+
+void HomeScreen::StartChatWait() {
+    chat_greeted_ = false;
+    chat_wait_until_us_ = esp_timer_get_time() + 10 * 1000 * 1000;
+}
+
+// The talk button of the conversation screen. It never leaves the conversation (only a hold does), and it keeps the
+// connection open, because a new connection is a new session on the server: the interpreter mode would be lost.
+void HomeScreen::ChatPress() {
+    auto& app = Application::GetInstance();
+    idle_since_us_ = 0;
+    switch (app.GetDeviceState()) {
+        case kDeviceStateListening:
+            app.StopListening();            // "done talking": the server answers what was said so far
+            break;
+        case kDeviceStateSpeaking:
+            app.ToggleChatState();          // interrupt Sophia
+            break;
+        case kDeviceStateIdle:
+            // Waiting for Sophia's first words: a "listen start" now would make the server drop the reply it is
+            // preparing. Presses are ignored for a while (not forever, in case the reply never comes).
+            if (!chat_greeted_ && esp_timer_get_time() < chat_wait_until_us_) break;
+            if (app.IsAudioChannelOpened()) {
+                app.StartListening();
+            } else if (!chat_open_text_.empty()) {
+                // the connection was lost: reconnect, and the new session starts in the same mode again
+                StartChatWait();
+                app.PlaySound(Lang::Sounds::OGG_LOADING);
+                app.InvokeText(chat_open_text_);
+            } else {
+                app.ToggleChatState();      // reconnect and listen
+            }
+            break;
+        default:
+            break;                          // connecting: wait
+    }
 }
 
 bool HomeScreen::OnDoubleClick() {
     if (!root_) return false;
     DisplayLockGuard lock(Board::GetInstance().GetDisplay());
     if (visible_) {
+        if (info_open_) {
+            info_open_ = false;
+            RequestRefresh();
+            return true;
+        }
         if (settings_open_) {
             set_focus_ = (set_focus_ + kSettingRows - 1) % kSettingRows;
             UpdateSettings();
@@ -885,10 +1048,9 @@ bool HomeScreen::OnDoubleClick() {
         return true;
     }
     if (chat_) {
-        chat_ = false;          // back to the home screen as soon as the device is idle
-        chat_translate_ = false;
-        idle_since_us_ = 0;
-        Application::GetInstance().EndConversation();
+        // Two quick presses on the talk button are read as a double click: treat them as one press rather than
+        // leaving the conversation by accident. Only a hold leaves.
+        ChatPress();
         return true;
     }
     return false;
@@ -899,14 +1061,25 @@ bool HomeScreen::OnLongPress() {
     DisplayLockGuard lock(Board::GetInstance().GetDisplay());
     if (!visible_) {
         if (!chat_) return false;
-        chat_ = false;          // hold = leave the conversation, like a double click
+        chat_ = false;          // hold = leave the conversation
         chat_translate_ = false;
+        chat_open_text_.clear();
         idle_since_us_ = 0;
         Application::GetInstance().EndConversation();
         return true;
     }
-    if (settings_open_) ChangeSetting(set_focus_);
-    else Open(focus_);
+    if (info_open_) {
+        if (!Online()) {
+            Toast("Cần Wi-Fi để cập nhật");
+            Application::GetInstance().PlaySound(Lang::Sounds::OGG_NEED_WIFI);
+        } else {
+            Application::GetInstance().CheckForUpdate();
+        }
+    } else if (settings_open_) {
+        ChangeSetting(set_focus_);
+    } else {
+        Open(focus_);
+    }
     return true;
 }
 

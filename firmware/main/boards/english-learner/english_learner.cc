@@ -151,10 +151,11 @@ private:
 #endif
             if (home::HomeScreen::GetInstance().OnDoubleClick()) return;
 #if CONFIG_EL_OFFLINE_STUDY
-            // Not connected yet (booting or waiting for Wi-Fi setup): a double click starts offline study.
+            // Not connected yet (booting or waiting for Wi-Fi setup): a double click skips the Wi-Fi setup and opens
+            // the home screen offline (online tiles show a notice, Settings can go back to the Wi-Fi setup).
             auto state = Application::GetInstance().GetDeviceState();
             if (state == kDeviceStateStarting || state == kDeviceStateWifiConfiguring) {
-                study.Start();
+                home::HomeScreen::GetInstance().EnterOfflineHome();
             }
 #endif
         });

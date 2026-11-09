@@ -12,8 +12,9 @@ using namespace ui;
 
 constexpr int kCardX = kPad, kCardY = 96, kCardW = kW - 2 * kPad, kCardH = 750, kCardRadius = 28;
 constexpr int kInner = kCardW - 32;                              // text width inside the card
-constexpr int kHintsY = kH - kPad - 80, kHintH = 80;
-constexpr uint32_t kRowTint = 0xF3F5F9, kRowFocus = 0xFFE7A0;      // selected row: soft amber
+constexpr int kHintsY = kHintBarY;                               // the shared legend (ui::HintBar)
+// Selected row: ink with white text, one quiet tone instead of an outline or a bright colour.
+constexpr uint32_t kRowTint = 0xF3F5F9, kRowFocus = kInk, kOnFocus = kWhite, kSubOnFocus = 0xC9CCDD;
 
 // Light tint of a colour, for pills.
 constexpr lv_opa_t kTint = 40;
@@ -149,8 +150,7 @@ bool StudyView::Build() {
     }
 
     // ---- hints at the bottom
-    hints_ = Box(root_, kCardW, kHintH, kWhite, 0, LV_OPA_TRANSP);
-    lv_obj_set_pos(hints_, kPad, kHintsY);
+    hints_ = HintBar(root_);
 
     // ---- toast
     toast_ = Box(root_, LV_SIZE_CONTENT, 52, kInk, 26);
@@ -204,21 +204,7 @@ void StudyView::SetHeader(const HeaderInfo& info) {
 void StudyView::SetHints(const std::vector<Hint>& hints) {
     if (!root_) return;
     DisplayLockGuard lock(Board::GetInstance().GetDisplay());
-    lv_obj_clean(hints_);
-    if (hints.empty()) return;
-    const int n = static_cast<int>(hints.size() > 3 ? 3 : hints.size());
-    const int gap = 8, w = (kCardW - gap * (n - 1)) / n;
-    for (int i = 0; i < n; ++i) {
-        const Hint& h = hints[i];
-        const uint32_t color = h.color ? h.color : kInk;
-        lv_obj_t* tile = Box(hints_, w, kHintH - 6, h.color ? h.color : kWhite, 20, h.color ? 36 : LV_OPA_COVER);
-        lv_obj_set_pos(tile, i * (w + gap), 0);
-        lv_obj_set_flex_flow(tile, LV_FLEX_FLOW_COLUMN);
-        lv_obj_set_flex_align(tile, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
-        lv_obj_set_style_pad_row(tile, 6, 0);
-        GlyphView(tile, h.glyph, color);
-        Label(tile, GetFonts().xb20, color, h.label);
-    }
+    FillHintBar(hints_, hints.data(), static_cast<int>(hints.size()));
 }
 
 void StudyView::ShowFront(const Card& card, const std::string& caption) {
@@ -261,7 +247,7 @@ void StudyView::ShowMenu(const char* const* items, int count, int selected) {
         if (i >= count) continue;
         lv_label_set_text(menu_label_[i], items[i]);
         lv_obj_set_style_bg_color(menu_row_[i], Hex(i == selected ? kRowFocus : kRowTint), 0);
-        SetRing(menu_row_[i], i == selected);
+        lv_obj_set_style_text_color(menu_label_[i], Hex(i == selected ? kOnFocus : kInk), 0);
     }
     ShowGroup(menu_);
 }
@@ -355,7 +341,7 @@ void StudyView::ShowLetters(const bool* has, int selected) {
         const bool avail = i == 26 || has[i];
         lv_obj_set_style_bg_color(cell_[i], Hex(on ? kRowFocus : kRowTint), 0);
         lv_obj_set_style_opa(cell_[i], avail ? LV_OPA_COVER : LV_OPA_40, 0);
-        SetRing(cell_[i], on, 4);
+        lv_obj_set_style_text_color(cell_label_[i], Hex(on ? kOnFocus : i == 26 ? tone::kAgain : kInk), 0);
     }
     ShowGroup(letters_);
 }
@@ -371,10 +357,11 @@ void StudyView::ShowList(const std::vector<ListRow>& rows, int selected) {
         lv_label_set_text(row_title_[i], r.title.c_str());
         lv_label_set_text(row_sub_[i], r.subtitle.c_str());
         SetShown(row_sub_[i], !r.subtitle.empty());
-        lv_obj_set_style_text_color(row_title_[i], Hex(r.special ? tone::kAgain : kInk), 0);
+        const bool on = i == selected;
+        lv_obj_set_style_text_color(row_title_[i], Hex(on ? kOnFocus : r.special ? tone::kAgain : kInk), 0);
+        lv_obj_set_style_text_color(row_sub_[i], Hex(on ? kSubOnFocus : kMuted), 0);
         lv_obj_set_pos(row_title_[i], 16, r.subtitle.empty() ? 20 : 0);
-        lv_obj_set_style_bg_color(row_[i], Hex(i == selected ? kRowFocus : kRowTint), 0);
-        SetRing(row_[i], i == selected, 4);
+        lv_obj_set_style_bg_color(row_[i], Hex(on ? kRowFocus : kRowTint), 0);
     }
     ShowGroup(list_);
 }

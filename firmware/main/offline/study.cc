@@ -2,6 +2,7 @@
 
 #include <esp_log.h>
 #include <esp_timer.h>
+#include <esp_wifi.h>
 #include <freertos/FreeRTOS.h>
 #include <freertos/queue.h>
 #include <freertos/task.h>
@@ -106,6 +107,8 @@ struct StudyImpl {
     Progress progress;
     InstalledPack installed;
     bool ready = false;
+    bool synced_this_boot = false;          // the automatic pack check runs once per power-on
+    bool sync_failed = false;               // the automatic check could not reach the server
     int card = -1;
     PickKind kind = PickKind::kNone;
     Card data;
@@ -254,7 +257,7 @@ struct StudyImpl {
         switch (screen) {
             case Screen::kFront:
                 view.ShowFront(data, pack.HasAudio(card) ? "Nghe và nhắc lại theo nhé!" : "Bạn nhớ nghĩa của từ này chưa?");
-                view.SetHints({{Glyph::kClick, "Xem nghĩa", 0}, {Glyph::kDouble, "Nghe lại", 0}, {Glyph::kHold, "Menu", 0}});
+                view.SetHints({{Glyph::kClick, "Xem nghĩa", 0, true}, {Glyph::kDouble, "Nghe lại", 0}, {Glyph::kHold, "Menu", 0}});
                 break;
             case Screen::kBack:
                 view.ShowBack(data);
@@ -263,11 +266,11 @@ struct StudyImpl {
                 break;
             case Screen::kMenu:
                 view.ShowMenu(kMenuItems, 3, menu_sel);
-                view.SetHints({{Glyph::kClick, "Mục kế", 0}, {Glyph::kHold, "Chọn", 0}, {Glyph::kDouble, "Quay lại", 0}});
+                view.SetHints({{Glyph::kClick, "Mục kế", 0}, {Glyph::kDouble, "Quay lại", 0}, {Glyph::kHold, "Chọn", 0, true}});
                 break;
             case Screen::kNotice:
                 view.ShowNotice(notice_icon, notice_title, notice_body);
-                view.SetHints({{Glyph::kClick, notice_exits ? "Xong" : notice_resumes ? "Tiếp tục" : "Mở menu", 0}});
+                view.SetHints({{Glyph::kClick, notice_exits ? "Xong" : notice_resumes ? "Tiếp tục" : "Mở menu", 0, true}});
                 break;
             case Screen::kDone: {
                 const bool review = mode == Mode::kReview;
@@ -278,7 +281,7 @@ struct StudyImpl {
                 else body = review ? "Hôm nay không còn từ nào đến hạn ôn." : "Hôm nay bạn đã học đủ từ mới rồi.";
                 if (!review && ready && st.fresh == 0) body += "\nBạn đã học hết các từ trong gói.";
                 view.ShowNotice(Icon::kOk, title, body);
-                view.SetHints({{Glyph::kClick, review ? "Ôn thêm" : "Học thêm", 0}, {Glyph::kHold, "Menu", 0}});
+                view.SetHints({{Glyph::kClick, review ? "Ôn thêm" : "Học thêm", 0, true}, {Glyph::kHold, "Menu", 0}});
                 break;
             }
             case Screen::kBusy:
@@ -286,15 +289,15 @@ struct StudyImpl {
                 break;      // ShowBusy() is called by RunSync()
             case Screen::kLetters:
                 view.ShowLetters(has_letter, letter_sel);
-                view.SetHints({{Glyph::kClick, "Chữ kế", 0}, {Glyph::kDouble, "Chữ trước", 0}, {Glyph::kHold, "Chọn", 0}});
+                view.SetHints({{Glyph::kClick, "Chữ kế", 0}, {Glyph::kDouble, "Chữ trước", 0}, {Glyph::kHold, "Chọn", 0, true}});
                 break;
             case Screen::kList:
                 RenderList();
-                view.SetHints({{Glyph::kClick, "Từ kế", 0}, {Glyph::kDouble, "Từ trước", 0}, {Glyph::kHold, "Xem", 0}});
+                view.SetHints({{Glyph::kClick, "Từ kế", 0}, {Glyph::kDouble, "Từ trước", 0}, {Glyph::kHold, "Xem", 0, true}});
                 break;
             case Screen::kDetail:
                 view.ShowBack(data);
-                view.SetHints({{Glyph::kClick, "Nghe lại", 0}, {Glyph::kDouble, "Quay lại", 0}, {Glyph::kHold, "Quay lại", 0}});
+                view.SetHints({{Glyph::kClick, "Nghe lại", 0}, {Glyph::kDouble, "Quay lại", 0, true}});
                 break;
         }
     }
@@ -377,11 +380,14 @@ struct StudyImpl {
         else view.Toast("Nhớ · " + when, tone::kGood);
     }
 
-    void RunSync() {
+    // Downloads the pack of the learner's deck (when it changed) and exchanges progress. `automatic`: the check made
+    // when a programme opens; then a notice is shown only when new words arrived, otherwise the caller goes straight
+    // on to the cards (with a toast when the server could not be reached). Returns true when a notice is on screen.
+    bool RunSync(bool automatic = false) {
         FlushQuietly();
         screen = Screen::kBusy;
         Render();
-        view.ShowBusy("Đang đồng bộ", "Đang kết nối với server...", -1);
+        view.ShowBusy(automatic ? "Đang tải bài học" : "Đang đồng bộ", "Đang kết nối với server...", -1);
         auto status_cb = [this](const std::string& s) {
             int pct = -1;
             const size_t pos = s.rfind('%');
@@ -403,8 +409,18 @@ struct StudyImpl {
         }
         card = -1;
         extra_mode = false;
+        if (automatic && !(ok && pack_result.pack_changed)) {
+            sync_failed = !ok;
+            return false;
+        }
         ShowNotice(ok ? Icon::kOk : Icon::kWarn, ok ? "ĐÃ ĐỒNG BỘ" : "LỖI ĐỒNG BỘ",
-                   ok ? "Đồng bộ xong" : "Chưa đồng bộ được", text, ready, mode == Mode::kSync);
+                   ok ? "Đã có bài học mới" : "Chưa đồng bộ được", text, ready, mode == Mode::kSync);
+        return true;
+    }
+
+    static bool WifiUp() {
+        wifi_ap_record_t ap;
+        return esp_wifi_sta_get_ap_info(&ap) == ESP_OK;
     }
 
     void Exit() {
@@ -552,6 +568,13 @@ struct StudyImpl {
             ui::RunInLvglTask([&] { ui::SwitchPage(change); });
         }
         LoadAll();
+        // The lessons of the deck chosen in the admin page arrive by themselves: the first time a programme opens
+        // after power-on with Wi-Fi, the device checks the server (a second or two when nothing changed).
+        sync_failed = false;
+        if (mode != Mode::kSync && !synced_this_boot && WifiUp()) {
+            synced_this_boot = true;
+            if (RunSync(true)) return;          // new words arrived: the notice says so, a click starts studying
+        }
         if (mode == Mode::kSync) {
             RunSync();
         } else if (!ready) {
@@ -567,6 +590,7 @@ struct StudyImpl {
         } else {
             ShowNext(-1);
         }
+        if (sync_failed && ready) view.Toast("Chưa tải được bài mới", tone::kExtra);
     }
 };
 

@@ -24,6 +24,11 @@ public:
     void ShowPage(Page page);                       // kNone hides the whole screen
 
     void SetSplashText(const std::string& status);
+    // Firmware download (percent < 0 leaves the mode). It has its own light page, like the vocabulary download: no
+    // picture of Sophia, no translucent shapes, nothing that moves. Only the percentage and the filled part of the
+    // bar are redrawn, and only when the value changes (every redraw while the flash is being written shows as
+    // stripes on this panel).
+    void SetUpgrade(int percent);
     void SetWifi(const std::string& ssid, const std::string& url);
     void SetCode(const std::string& code);          // the digits to show (and read)
     void StartReading(int64_t now_us);              // the voice starts reading the code now: light up the digits
@@ -41,6 +46,11 @@ private:
     lv_obj_t* group_[4] = {};                       // splash, wifi, code (index 1..3)
     lv_obj_t* splash_status_ = nullptr;
     lv_obj_t* splash_dots_[3] = {};
+    lv_obj_t* backdrop_ = nullptr;
+    lv_obj_t* upgrade_group_ = nullptr;
+    lv_obj_t* upgrade_pct_ = nullptr;
+    lv_obj_t* upgrade_fill_ = nullptr;
+    int upgrade_percent_ = -1;                      // -1: not upgrading
     lv_obj_t* wifi_ssid_ = nullptr;
     lv_obj_t* wifi_url_ = nullptr;
     lv_obj_t* wifi_status_ = nullptr;
@@ -58,6 +68,7 @@ private:
     int64_t next_blink_us_ = 0, blink_until_us_ = 0;
 
     void SetDigitLit(int index);
+    void ApplyVisibility();                         // which parts of the root show for page_ and the upgrade mode
 };
 
 }  // namespace home

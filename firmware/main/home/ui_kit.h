@@ -13,6 +13,14 @@ namespace ui {
 
 constexpr int kW = 376, kH = 960, kPad = 16;
 
+// Shared layout tokens, so every page has the same rhythm.
+constexpr int kHintBarH = 64;                       // the button legend at the bottom of every page
+constexpr int kHintBarY = kH - kPad - kHintBarH;
+// Selection, the same on every page and without outlines: the selected card is raised (moved up, its darker edge
+// showing) in full colour; the others lie flat and a little faded, so they step back.
+constexpr int kLift = 4;                            // the selected card moves up this much, uncovering its edge
+constexpr int kFadePct = 30;                        // how far an unselected colour is mixed towards the page
+
 // colours
 constexpr uint32_t kBg = 0xFFF8EC;          // warm cream page
 constexpr uint32_t kInk = 0x1F2340;         // text
@@ -35,7 +43,7 @@ constexpr uint32_t kBook = 0xE063, kReview = 0xE14C, kSearch = 0xE155, kChat = 0
                    kTrophy = 0xE377, kWifi = 0xE1AE, kWifiOff = 0xE1AF, kFlame = 0xE0D7, kSettings = 0xE158,
                    kCheck = 0xE070, kGrid = 0xE105, kList = 0xE10C, kSun = 0xE17C, kVolume = 0xE1AB,
                    kSync = 0xE149, kBack = 0xE04C, kLeft = 0xE072, kRight = 0xE073, kClose = 0xE1B2,
-                   kAZ = 0xE41A, kOk = 0xE226, kLanguages = 0xE103;
+                   kAZ = 0xE41A, kOk = 0xE226, kLanguages = 0xE103, kGradCap = 0xE234;
 }
 
 struct Fonts {
@@ -74,10 +82,24 @@ void RunInLvglTask(const std::function<void()>& fn);
 
 // Two-colour background gradient: horizontal (from left to right) or vertical (from top to bottom).
 void SetGradient(lv_obj_t* o, uint32_t from, uint32_t to, bool horizontal);
-// Yellow focus ring on/off.
-void SetRing(lv_obj_t* o, bool on, int width = 5);
+// `a` mixed with `b`: pct_b = 0 gives a, 100 gives b. Used to fade unselected items towards the page colour.
+uint32_t Mix(uint32_t a, uint32_t b, int pct_b);
 // The three-glyph legend used at the bottom of every screen: dot = click, two dots = double click, bar = hold.
 enum class Glyph { kClick, kDouble, kHold };
 lv_obj_t* GlyphView(lv_obj_t* parent, Glyph glyph, uint32_t color);
+
+// One entry of the button legend. color 0 = neutral (white); otherwise a light tint of the colour. `strong` marks
+// the main action of the page: it is filled (ink, or the colour) and twice as wide.
+struct Hint {
+    Glyph glyph;
+    const char* label;
+    uint32_t color = 0;
+    bool strong = false;
+};
+// Empty legend container at the bottom of the page (kHintBarY).
+lv_obj_t* HintBar(lv_obj_t* parent);
+// Replaces the legend with up to three entries. `labels` (optional, n entries) receives the label objects, so a
+// page can change a text later (for example "Mở Học từ mới" when the focus moves).
+void FillHintBar(lv_obj_t* bar, const Hint* hints, int n, lv_obj_t** labels = nullptr);
 
 }  // namespace ui

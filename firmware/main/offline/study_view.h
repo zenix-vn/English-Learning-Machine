@@ -18,11 +18,7 @@ constexpr uint32_t kGood = 0x16A34A, kAgain = 0xDC2626, kEasy = 0xD97706;
 }  // namespace tone
 
 using Glyph = ui::Glyph;                           // one press, two presses, press and hold
-struct Hint {
-    Glyph glyph;
-    const char* label;
-    uint32_t color;                                // 0 = neutral
-};
+using Hint = ui::Hint;                             // {glyph, label, color (0 = neutral), strong}
 
 struct HeaderInfo {
     const char* tag = "";                          // pill at the top left

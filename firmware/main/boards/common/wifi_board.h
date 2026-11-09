@@ -29,7 +29,7 @@ protected:
     /**
      * Enter WiFi configuration mode
      */
-    void StartWifiConfigMode();
+    void StartWifiConfigMode(bool network_not_found = false);
 
     /**
      * WiFi connection timeout callback
@@ -59,6 +59,7 @@ public:
      * Enter WiFi configuration mode (thread-safe, can be called from any task)
      */
     void EnterWifiConfigMode();
+
     
     /**
      * Check if in WiFi config mode

@@ -23,8 +23,8 @@ fi
 
 VI="U+0020-007E,U+00A0-017F,U+01A0-01B0,U+1EA0-1EF9,U+2013-2014,U+2018-2019,U+201C-201D,U+2026"
 # book-open rotate-ccw search message-circle mic trophy wifi wifi-off flame settings check layout-grid list sun
-# volume-2 refresh-cw arrow-left chevron-left chevron-right x arrow-down-a-z circle-check languages
-ICONS="U+E063,U+E14C,U+E155,U+E11A,U+E11C,U+E377,U+E1AE,U+E1AF,U+E0D7,U+E158,U+E070,U+E105,U+E10C,U+E17C,U+E1AB,U+E149,U+E04C,U+E072,U+E073,U+E1B2,U+E41A,U+E226,U+E103"
+# volume-2 refresh-cw arrow-left chevron-left chevron-right x arrow-down-a-z circle-check languages graduation-cap
+ICONS="U+E063,U+E14C,U+E155,U+E11A,U+E11C,U+E377,U+E1AE,U+E1AF,U+E0D7,U+E158,U+E070,U+E105,U+E10C,U+E17C,U+E1AB,U+E149,U+E04C,U+E072,U+E073,U+E1B2,U+E41A,U+E226,U+E103,U+E234"
 
 ./venv/bin/pyftsubset Baloo2-ExtraBold.ttf --unicodes="$VI" --layout-features='' --no-hinting --output-file="$OUT/baloo2_extrabold.ttf"
 ./venv/bin/pyftsubset Baloo2-SemiBold.ttf --unicodes="$VI" --layout-features='' --no-hinting --output-file="$OUT/baloo2_semibold.ttf"

@@ -43,16 +43,10 @@ lv_obj_t* StatusPill(lv_obj_t* parent, int y, uint32_t dot_color, const char* te
     return label;
 }
 
-// White strip at the bottom with a button glyph and its meaning.
+// The button legend at the bottom, the same as on every other page.
 void HintStrip(lv_obj_t* parent, Glyph glyph, const char* text) {
-    const Fonts& f = GetFonts();
-    lv_obj_t* strip = Box(parent, kW - 2 * kPad, 44, kWhite, 22);
-    lv_obj_set_pos(strip, kPad, kH - kPad - 44);
-    lv_obj_set_flex_flow(strip, LV_FLEX_FLOW_ROW);
-    lv_obj_set_flex_align(strip, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
-    lv_obj_set_style_pad_column(strip, 10, 0);
-    GlyphView(strip, glyph, kInk);
-    Label(strip, f.sb17, kMuted, text);
+    const Hint hint{glyph, text};
+    FillHintBar(HintBar(parent), &hint, 1);
 }
 
 // A numbered step card. `value` (optional) is the thing to look for, shown big in a tinted pill. Returns the value label.
@@ -103,8 +97,8 @@ void SetupScreen::Build() {
     SetShown(root_, false);
 
     // Sophia on a soft round backdrop, shared by all pages
-    lv_obj_t* backdrop = Box(root_, 268, 268, kWhite, LV_RADIUS_CIRCLE, 150);
-    lv_obj_align(backdrop, LV_ALIGN_TOP_MID, 0, 14);
+    backdrop_ = Box(root_, 268, 268, kWhite, LV_RADIUS_CIRCLE, 150);
+    lv_obj_align(backdrop_, LV_ALIGN_TOP_MID, 0, 14);
     mascot_ = lv_image_create(root_);
     lv_image_set_src(mascot_, MascotFrame(kIdle));
     lv_obj_align(mascot_, LV_ALIGN_TOP_MID, 0, 8);
@@ -120,6 +114,22 @@ void SetupScreen::Build() {
         lv_obj_align(splash_dots_[i], LV_ALIGN_TOP_MID, (i - 1) * 32, 450);
     }
 
+    // ---- firmware download: same plain look as the vocabulary download (badge, title, percentage, bar)
+    upgrade_group_ = Group(root_);
+    lv_obj_t* badge = Box(upgrade_group_, 128, 128, kBlue, LV_RADIUS_CIRCLE);
+    lv_obj_align(badge, LV_ALIGN_TOP_MID, 0, 216);
+    lv_obj_center(Label(badge, f.icon64, kWhite, Utf8(icon::kSync)));
+    lv_obj_align(Paragraph(upgrade_group_, f.xb32, kInk, "Đang nâng cấp", kW - 2 * kPad, true), LV_ALIGN_TOP_MID, 0, 380);
+    lv_obj_align(Paragraph(upgrade_group_, f.sb22, kMuted, "Vui lòng đợi, đừng tắt máy.", kW - 2 * kPad, true),
+                 LV_ALIGN_TOP_MID, 0, 436);
+    upgrade_pct_ = Label(upgrade_group_, f.xb44, kBlue, "0%");
+    lv_obj_set_width(upgrade_pct_, 160);
+    lv_obj_set_style_text_align(upgrade_pct_, LV_TEXT_ALIGN_CENTER, 0);
+    lv_obj_align(upgrade_pct_, LV_ALIGN_TOP_MID, 0, 520);
+    lv_obj_t* track = Box(upgrade_group_, 280, 16, kRim, 8);
+    lv_obj_align(track, LV_ALIGN_TOP_MID, 0, 596);
+    upgrade_fill_ = Box(track, 0, 16, kBlue, 8);
+
     // ---- Wi-Fi setup: three steps
     g = group_[2] = Group(root_);
     lv_obj_align(Paragraph(g, f.xb32, kInk, "Cài Wi-Fi cho Sophia", kW - 2 * kPad, true), LV_ALIGN_TOP_MID, 0, 296);
@@ -129,7 +139,7 @@ void SetupScreen::Build() {
     wifi_url_ = StepCard(g, 516, 2, 0x5EEAD4, kTeal, 0xDDF3EF, "Mở trình duyệt, vào địa chỉ", "192.168.4.1");
     StepCard(g, 640, 3, 0xB69CFB, kPurple, 0xEDE6FC, "Chọn Wi-Fi nhà bạn, nhập mật khẩu rồi bấm lưu", nullptr);
     wifi_status_ = StatusPill(g, 776, kGreen, "Đang chờ bạn kết nối");
-    HintStrip(g, Glyph::kDouble, "Bấm 2 lần: học offline, không cần Wi-Fi");
+    HintStrip(g, Glyph::kDouble, "Bấm 2 lần: bỏ qua, học offline");
 
     // ---- activation code
     g = group_[3] = Group(root_);
@@ -162,11 +172,19 @@ void SetupScreen::Build() {
     HintStrip(g, Glyph::kClick, "Bấm: nghe lại mã");
 }
 
+void SetupScreen::ApplyVisibility() {
+    const bool up = upgrade_percent_ >= 0 && page_ == Page::kSplash;     // the light download page replaces the splash
+    SetShown(backdrop_, !up);
+    SetShown(mascot_, !up);
+    for (int i = 1; i <= 3; ++i) SetShown(group_[i], static_cast<int>(page_) == i && !(up && i == 1));
+    SetShown(upgrade_group_, up);
+}
+
 void SetupScreen::ShowPage(Page page) {
     if (!root_) return;
     page_ = page;
     SetShown(root_, page != Page::kNone);
-    for (int i = 1; i <= 3; ++i) SetShown(group_[i], static_cast<int>(page) == i);
+    ApplyVisibility();
     mascot_frame_ = -1;
     step_ = 0;
     next_blink_us_ = 0;
@@ -174,6 +192,23 @@ void SetupScreen::ShowPage(Page page) {
 
 void SetupScreen::SetSplashText(const std::string& status) {
     if (splash_status_) lv_label_set_text(splash_status_, status.c_str());
+}
+
+void SetupScreen::SetUpgrade(int percent) {
+    if (!upgrade_pct_) return;
+    if (percent < 0) {                                  // leaving: the splash comes back
+        if (upgrade_percent_ < 0) return;
+        upgrade_percent_ = -1;
+        ApplyVisibility();
+        return;
+    }
+    if (percent > 100) percent = 100;
+    if (percent == upgrade_percent_) return;            // nothing changed: nothing is drawn
+    const bool entering = upgrade_percent_ < 0;
+    upgrade_percent_ = percent;
+    lv_label_set_text_fmt(upgrade_pct_, "%d%%", percent);
+    lv_obj_set_width(upgrade_fill_, 280 * percent / 100);
+    if (entering) ApplyVisibility();
 }
 
 void SetupScreen::SetWifi(const std::string& ssid, const std::string& url) {
@@ -222,6 +257,7 @@ void SetupScreen::SetDigitLit(int index) {
 
 void SetupScreen::Tick(int64_t now_us) {
     if (!root_ || page_ == Page::kNone) return;
+    if (upgrade_percent_ >= 0) return;               // downloading firmware: keep the page still
     ++step_;
 
     // is the voice reading the code?

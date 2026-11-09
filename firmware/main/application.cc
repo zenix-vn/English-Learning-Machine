@@ -144,6 +144,10 @@ void Application::Initialize() {
                     msg += data;
                     msg += "...";
                     display->ShowNotification(msg.c_str(), 30000);
+                    if (!connecting_spoken_) {          // Sophia says it once, not at every retry
+                        connecting_spoken_ = true;
+                        Schedule([this]() { audio_service_.PlaySound(Lang::Sounds::OGG_CONNECTING); });
+                    }
                 }
                 break;
             }
@@ -152,6 +156,12 @@ void Application::Initialize() {
                 msg += data;
                 display->ShowNotification(msg.c_str(), 30000);
                 xEventGroupSetBits(event_group_, MAIN_EVENT_NETWORK_CONNECTED);
+                {   // announce the connection while starting up, not every time the Wi-Fi comes back mid-session
+                    const auto st = GetDeviceState();
+                    if (st == kDeviceStateStarting || st == kDeviceStateWifiConfiguring) {
+                        Schedule([this]() { audio_service_.PlaySound(Lang::Sounds::OGG_CONNECTED); });
+                    }
+                }
                 break;
             }
             case NetworkEvent::Disconnected:
@@ -1317,7 +1327,6 @@ void Application::Reboot() {
 
 bool Application::UpgradeFirmware(const std::string& url, const std::string& version) {
     auto& board = Board::GetInstance();
-    auto display = board.GetDisplay();
 
     std::string upgrade_url = url;
     std::string version_info = version.empty() ? "(Manual upgrade)" : version;
@@ -1339,22 +1348,20 @@ bool Application::UpgradeFirmware(const std::string& url, const std::string& ver
 
     SetDeviceState(kDeviceStateUpgrading);
 
-    std::string message = std::string(Lang::Strings::NEW_VERSION) + version_info;
-    display->SetChatMessage("system", message.c_str());
+    // The splash page shows a percentage and a bar (HomeScreen::SetUpgradeProgress). Nothing else is drawn from here
+    // on: not the base UI's chat message either, as every redraw shows as stripes while the flash is written.
+    home::HomeScreen::GetInstance().SetUpgradeProgress(0);
 
     board.SetPowerSaveLevel(PowerSaveLevel::PERFORMANCE);
     audio_service_.Stop();
     vTaskDelay(pdMS_TO_TICKS(1000));
 
-    bool upgrade_success = Ota::Upgrade(upgrade_url, [this, display](int progress, size_t speed) {
-        char buffer[32];
-        snprintf(buffer, sizeof(buffer), "%d%% %uKB/s", progress, speed / 1024);
-        Schedule([display, message = std::string(buffer)]() {
-            display->SetChatMessage("system", message.c_str());
-        });
+    bool upgrade_success = Ota::Upgrade(upgrade_url, [](int progress, size_t) {
+        home::HomeScreen::GetInstance().SetUpgradeProgress(progress);
     });
 
     if (!upgrade_success) {
+        home::HomeScreen::GetInstance().SetUpgradeProgress(-1);
         // Upgrade failed, restart audio service and continue running
         ESP_LOGE(TAG,
                  "Firmware upgrade failed, restarting audio service and continuing operation...");
@@ -1367,11 +1374,33 @@ bool Application::UpgradeFirmware(const std::string& url, const std::string& ver
     } else {
         // Upgrade success, reboot immediately
         ESP_LOGI(TAG, "Firmware upgrade successful, rebooting...");
-        display->SetChatMessage("system", "Upgrade successful, rebooting...");
-        vTaskDelay(pdMS_TO_TICKS(1000));  // Brief pause to show message
+        vTaskDelay(pdMS_TO_TICKS(1000));  // Brief pause on the 100 % page
         Reboot();
         return true;
     }
+}
+
+void Application::CheckForUpdate() {
+    Schedule([this]() {
+        auto& home = home::HomeScreen::GetInstance();
+        if (GetDeviceState() != kDeviceStateIdle) {
+            return;
+        }
+        home.Notify("Đang kiểm tra bản mới...");
+        // ota_ is released once start-up is over (see Application::CheckNewVersion), so each check has its own object
+        Ota ota;
+        auto check = ota.CheckVersion();        // blocks for a few seconds, like the check at start-up
+        if (!check) {
+            ESP_LOGW(TAG, "Manual update check failed: %s", check.error().ToString().c_str());
+            home.Notify("Không kết nối được máy chủ");
+            return;
+        }
+        if (!ota.HasNewVersion()) {
+            home.Notify("Bạn đang dùng bản mới nhất");
+            return;
+        }
+        UpgradeFirmware(ota.GetFirmwareUrl(), ota.GetFirmwareVersion());      // reboots when it succeeds
+    });
 }
 
 void Application::InvokeText(const std::string& text) {
@@ -1395,6 +1424,11 @@ void Application::ContinueInvokeText(const std::string& text) {
     if (!protocol_->IsAudioChannelOpened() && !protocol_->OpenAudioChannel()) {
         SetDeviceState(kDeviceStateIdle);
         return;
+    }
+    // A local clip ("wait a moment...") may still be playing: the server's "tts start" resets the decoder and
+    // would cut it off, so let it finish first (bounded, the clips are a few seconds long).
+    for (int waited = 0; waited < 4000 && !audio_service_.IsPlaybackIdle(); waited += 50) {
+        vTaskDelay(pdMS_TO_TICKS(50));
     }
     ESP_LOGI(TAG, "Text request: %s", text.c_str());
     // Sending "listen start" now would make the server abort the reply it is preparing, so only set
