@@ -35,7 +35,8 @@ CREATE TABLE IF NOT EXISTS devices(
     activated_at INTEGER DEFAULT 0,     -- first time the device was allowed to run (0 = never)
     plan_id INTEGER DEFAULT 0,
     plan_started INTEGER DEFAULT 0,
-    plan_expires INTEGER DEFAULT 0      -- 0 = never expires
+    plan_expires INTEGER DEFAULT 0,     -- 0 = never expires
+    mode TEXT DEFAULT ''                -- what the wake word opens: learn | chat | assistant ('' = device default)
 );
 CREATE TABLE IF NOT EXISTS plans(
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -77,7 +78,9 @@ MIGRATIONS = [
     ("devices", "plan_id", "INTEGER DEFAULT 0"),
     ("devices", "plan_started", "INTEGER DEFAULT 0"),
     ("devices", "plan_expires", "INTEGER DEFAULT 0"),
+    ("devices", "mode", "TEXT DEFAULT ''"),
 ]
+DEVICE_MODES = ("learn", "chat", "assistant")
 
 DEFAULT_PLANS = [
     # name, description, price, duration_days, daily_turns, monthly_turns, is_default
@@ -171,6 +174,14 @@ def device_status(device_id: str) -> str:
     with connect() as con:
         row = con.execute("SELECT status FROM devices WHERE id=?", (device_id,)).fetchone()
     return row["status"] if row else "pending"
+
+
+def device_mode(device_id: str) -> str:
+    """The conversation mode chosen for this device in the admin page ('' = not set)."""
+    with connect() as con:
+        row = con.execute("SELECT mode FROM devices WHERE id=?", (device_id,)).fetchone()
+    mode = (row["mode"] if row else "") or ""
+    return mode if mode in DEVICE_MODES else ""
 
 
 def set_online(device_id: str, online: bool):

@@ -777,6 +777,11 @@ class H(BaseHTTPRequestHandler):
                 if col in data:
                     fields.append(f"{col}=?")
                     args.append(str(data[col])[:200])
+            if "mode" in data:
+                if data["mode"] not in ("", "learn", "chat", "assistant"):
+                    return self._json({"error": "Chế độ không hợp lệ"}, 400)
+                fields.append("mode=?")
+                args.append(data["mode"])
             status = data.get("status")
             if status in ("blocked", "pending"):
                 fields.append("status=?")

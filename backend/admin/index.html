@@ -125,6 +125,7 @@ async function overview(){
   pendingBadge();arm(()=>{if(document.hidden)return;overview()},30000)}
 
 /* ---------- devices ---------- */
+const MODES=[['','Mặc định (học tiếng Anh)'],['learn','Học tiếng Anh'],['chat','Trò chuyện'],['assistant','Trợ lý']];
 const STATE={pending:['warn','Chờ kích hoạt'],blocked:['bad','Bị khóa'],expired:['bad','Hết hạn gói'],limit:['warn','Hết lượt'],online:['ok','Đang hoạt động'],idle:['','Sẵn sàng']};
 const dshort=ts=>ts?new Date(ts*1000).toLocaleDateString('vi-VN'):'—';
 function planLine(d){
@@ -149,7 +150,8 @@ async function devices(){
     <div class="meta" style="margin-top:-4px"><span>Đăng ký ${fmt(d.first_seen)}</span><span>Kích hoạt lần đầu ${d.activated_at?fmt(d.activated_at):'chưa'}</span>${planLine(d)}</div>
     <div class="meta" style="margin-top:-4px"><span>${d.turns} lượt tổng · ${money(d.cost)}</span><span>Sổ từ: ${d.notebook} từ${d.notebook_due?` (${d.notebook_due} đến hạn ôn)`:''}</span><span>Offline: ${d.last_sync?'đồng bộ '+ago(d.last_sync)+' · '+d.sync_events+' lượt ôn':'chưa đồng bộ'}</span>
       <span>Bộ từ: <select class="dk" style="width:auto;padding:2px 6px"><option value="0" ${d.deck_id?'':'selected'}>mặc định</option>${dk.map(k=>`<option value="${k.id}" ${k.id===d.deck_id?'selected':''}>${esc(k.name)}</option>`).join('')}</select></span>
-      ${d.status==='approved'?`<span>Gói: <select class="pl" style="width:auto;padding:2px 6px"><option value="0" ${d.plan_id?'':'selected'}>(không giới hạn)</option>${plans.map(p=>`<option value="${p.id}" ${p.id===d.plan_id?'selected':''}>${esc(p.name)}</option>`).join('')}</select></span>`:''}</div>
+      <span title="Khi gọi wake word hoặc bấm nút, thiết bị mở chế độ này">Chế độ: <select class="md" style="width:auto;padding:2px 6px">${MODES.map(([v,l])=>`<option value="${v}" ${v===(d.mode||'')?'selected':''}>${l}</option>`).join('')}</select></span>
+      ${d.status==='approved'?`<span>Gói: <select class="pl"style="width:auto;padding:2px 6px"><option value="0" ${d.plan_id?'':'selected'}>(không giới hạn)</option>${plans.map(p=>`<option value="${p.id}" ${p.id===d.plan_id?'selected':''}>${esc(p.name)}</option>`).join('')}</select></span>`:''}</div>
     ${d.note?`<div class="hint" style="margin:-4px 0 8px">Ghi chú: ${esc(d.note)}</div>`:''}
     <div class="act">
       ${d.status!=='approved'?`<button class="s p" data-a="approve">${d.status==='blocked'?'Bỏ chặn':'Kích hoạt'}</button>`:''}
@@ -164,6 +166,7 @@ async function devices(){
     if(j.error)return setMsg($('#am'),j.error,'bad');setMsg($('#am'),'Đã kích hoạt '+j.id,'ok');devices();pendingBadge()};
   $('#dl').onchange=async e=>{const el=e.target.closest('.dev');if(!el)return;const id=el.dataset.id;
     if(e.target.matches('select.dk'))await api('/api/device/deck',{id,deck_id:+e.target.value});
+    else if(e.target.matches('select.md')){const j=await api('/api/device/update',{id,mode:e.target.value});if(j.error)alert(j.error)}
     else if(e.target.matches('select.pl')){const restart=confirm('Tính lại thời hạn của gói mới từ hôm nay?\nOK = tính lại từ hôm nay, Cancel = giữ nguyên ngày hết hạn hiện tại');
       await api('/api/device/plan',{id,plan_id:+e.target.value,restart});devices()}};
   $('#dl').onclick=async e=>{const b=e.target.closest('button[data-a]');if(!b)return;const el=b.closest('.dev'),id=el.dataset.id,d=list.find(x=>x.id===id);const a=b.dataset.a;

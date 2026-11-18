@@ -3,12 +3,15 @@ import json
 import logging
 from typing import AsyncIterator, Awaitable, Callable
 
-from openai import AsyncOpenAI
+from openai import AsyncOpenAI, BadRequestError
 
 from .asr import usage_cost
 
 log = logging.getLogger("llm")
 MAX_TOOL_ROUNDS = 3
+# Models (on OpenRouter) that refuse "reasoning disabled": they get low-effort reasoning and room for it instead.
+_REASONING_ONLY: set[str] = set()
+REASONING_EXTRA_TOKENS = 3000
 
 
 class LLM:
@@ -33,8 +36,21 @@ class LLM:
                 kwargs["tools"] = tools
             if self._openrouter:
                 kwargs["extra_body"] = {"reasoning": {"enabled": False}}
+            if self.model in _REASONING_ONLY:
+                kwargs["extra_body"] = {"reasoning": {"effort": "low", "exclude": True}}
+                kwargs["max_tokens"] = self.max_tokens + REASONING_EXTRA_TOKENS
             text, calls = "", {}
-            stream = await self._client.chat.completions.create(**kwargs)
+            try:
+                stream = await self._client.chat.completions.create(**kwargs)
+            except BadRequestError as e:
+                if self.model in _REASONING_ONLY or "reasoning" not in str(e).lower():
+                    raise
+                # e.g. "Reasoning is mandatory for this endpoint and cannot be disabled"
+                log.warning("%s needs reasoning, retrying with low effort", self.model)
+                _REASONING_ONLY.add(self.model)
+                kwargs["extra_body"] = {"reasoning": {"effort": "low", "exclude": True}}
+                kwargs["max_tokens"] = self.max_tokens + REASONING_EXTRA_TOKENS
+                stream = await self._client.chat.completions.create(**kwargs)
             async for chunk in stream:
                 if getattr(chunk, "usage", None):
                     self.cost += usage_cost(chunk.usage)
